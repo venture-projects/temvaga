@@ -922,9 +922,8 @@ async function loadAndRenderViews() {
 function startReportsListener() {
   const cutoff = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
   const q = query(
-    collection(db, 'reports'),
-    where('ts', '>=', cutoff),
-    orderBy('ts', 'desc')
+  collection(db, 'reports'),
+  orderBy('ts', 'desc')
   );
 
   onSnapshot(q, snap => {
