@@ -234,7 +234,7 @@
   /* ── CARDS GRID ── */
   .cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     margin-bottom: 40px;
   }
@@ -753,28 +753,40 @@
   <!-- CARDS -->
   <div class="cards">
     <div class="card">
-      <div class="card-icon">🅿️</div>
-      <div class="card-label">Vagas Livres</div>
-      <div class="card-value" id="vagasLivres">—</div>
-      <div class="card-unit">de 180 total</div>
-    </div>
-    <div class="card">
       <div class="card-icon">📊</div>
       <div class="card-label">Reportes Hoje</div>
       <div class="card-value" id="reportesHoje">—</div>
       <div class="card-unit">da comunidade</div>
     </div>
     <div class="card">
-      <div class="card-icon">⏱️</div>
-      <div class="card-label">Tempo Médio Fila</div>
-      <div class="card-value" id="tempoMedio">—</div>
-      <div class="card-unit">minutos</div>
-    </div>
-    <div class="card">
       <div class="card-icon">🔥</div>
       <div class="card-label">Pico Hoje</div>
       <div class="card-value" id="picoHoje">—</div>
       <div class="card-unit">% ocupação</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⏱️</div>
+      <div class="card-label">Tempo de Fila Esperado</div>
+      <div class="card-value" id="tempoEsperado">—</div>
+      <div class="card-unit">minutos (se cheio)</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🚗</div>
+      <div class="card-label">Tamanho Esperado da Fila</div>
+      <div class="card-value" id="filaEsperada">—</div>
+      <div class="card-unit">carros (se cheio)</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📈</div>
+      <div class="card-label">Tempo Médio de Fila Hoje</div>
+      <div class="card-value" id="tempoMedioHoje">—</div>
+      <div class="card-unit">minutos (média do dia)</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🅿️</div>
+      <div class="card-label">Média de Utilização Hoje</div>
+      <div class="card-value" id="mediaUtilizacaoHoje">—</div>
+      <div class="card-unit">% média do dia</div>
     </div>
   </div>
 
@@ -999,6 +1011,42 @@ async function trackPageView() {
   loadAndRenderViews();
 }
 
+// ══════════════════════════════════════════════
+//  ESTATÍSTICAS DO DIA (pico, tempo médio fila, média utilização)
+// ══════════════════════════════════════════════
+async function loadDayStats() {
+  try {
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    const cutoffDay  = Timestamp.fromMillis(startOfDay.getTime());
+    const snap = await getDocs(query(
+      collection(db, 'reports'),
+      where('ts', '>=', cutoffDay),
+      orderBy('ts', 'asc')
+    ));
+    const docs = snap.docs.map(d => d.data());
+
+    if (!docs.length) return;
+
+    // Pico: maior ocupação do dia
+    const pico = Math.max(...docs.map(d => d.ocupacao ?? 0));
+    document.getElementById('picoHoje').textContent = pico;
+
+    // Média de utilização: média das ocupações registradas no dia
+    const mediaUtil = Math.round(docs.reduce((s, d) => s + (d.ocupacao ?? 0), 0) / docs.length);
+    document.getElementById('mediaUtilizacaoHoje').textContent = mediaUtil + '%';
+
+    // Tempo médio de fila do dia: média dos tempos esperados apenas quando cheio (ocup=100)
+    const cheioDocs = docs.filter(d => (d.ocupacao ?? 0) >= 100);
+    if (cheioDocs.length) {
+      const mediaFila  = cheioDocs.reduce((s, d) => s + (d.fila || 0), 0) / cheioDocs.length;
+      const mediaTempo = Math.round(mediaFila * 1.3);
+      document.getElementById('tempoMedioHoje').textContent = mediaTempo;
+    } else {
+      document.getElementById('tempoMedioHoje').textContent = '0';
+    }
+  } catch(e) { console.warn('loadDayStats err', e); }
+}
+
 async function loadAndRenderViews() {
   const now    = new Date();
   const dayKey = now.toISOString().slice(0,10);
@@ -1041,6 +1089,7 @@ function startReportsListener() {
     }
 
     applyStatus(computeStatus());
+    loadDayStats();
     renderChart(chartMode);
   }, err => {
     console.warn('listener err', err);
@@ -1098,13 +1147,17 @@ function applyStatus(s) {
     : s.status === 'quase' ? 'var(--laranja)' : 'var(--verde)';
 
   document.getElementById('pctDisplay').textContent     = pct + '%';
-  document.getElementById('vagasLivres').textContent    = livres;
   document.getElementById('reportesHoje').textContent   = reportesHojeCount || (recentReports.length || '—');
-  document.getElementById('picoHoje').textContent       = pct;
 
-  // ✅ 1,3 minutos por carro
-  const avg = s.fila > 0 ? Math.round(s.fila * 1.3) : 0;
-  document.getElementById('tempoMedio').textContent  = avg > 0 ? avg : '< 1';
+  // Pico hoje: maior ocupação registrada no dia (atualizado via loadDayStats)
+  // (não sobrescrevemos aqui — é atualizado por loadDayStats)
+
+  // Tempo de Fila Esperado e Tamanho Esperado: só quando cheio (100%)
+  const eFila  = pct >= 100 ? s.fila  : 0;
+  const eTempo = pct >= 100 ? Math.round(s.fila * 1.3) : 0;
+  document.getElementById('filaEsperada').textContent  = pct >= 100 ? eFila  : 0;
+  document.getElementById('tempoEsperado').textContent = pct >= 100 ? eTempo : 0;
+
   document.getElementById('lastUpdate').textContent  = new Date().toLocaleTimeString('pt-BR');
 
   const badge = document.getElementById('statusBadge');
@@ -1280,6 +1333,7 @@ function refreshData() {
     btn.classList.remove('spinning');
     // Usa computeStatus que preserva currentOcupacao já ajustado pelos reportes
     applyStatus(computeStatus());
+    loadDayStats();
     renderChart(chartMode);
   }, 700);
 }
@@ -1318,10 +1372,12 @@ document.addEventListener('DOMContentLoaded', () => {
   trackPageView();
   loadAndRenderViews();
   startReportsListener();        // listener em tempo real (sobrescreve o placeholder)
+  loadDayStats();
   renderChart(chartMode);
 
-  // Re-renderiza views a cada 5 min
+  // Re-renderiza views e stats a cada 5 min
   setInterval(loadAndRenderViews, 5 * 60 * 1000);
+  setInterval(loadDayStats, 5 * 60 * 1000);
 });
 </script>
 
