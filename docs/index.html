@@ -98,28 +98,16 @@
     background: var(--ouro);
     color: var(--preto);
     border: none;
-    padding: 9px 20px;
-    border-radius: 8px;
+    padding: 7px 16px;
+    border-radius: 6px;
     font-family: 'Space Mono', monospace;
-    font-size: 12px;
+    font-size: 11px;
     font-weight: 700;
     cursor: pointer;
-    letter-spacing: 0.08em;
-    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
-    box-shadow: 0 0 0 0 rgba(255,209,0,0.5);
-    animation: reportPulse 2.5s infinite;
-    position: relative;
+    letter-spacing: 0.06em;
+    transition: opacity 0.2s, transform 0.1s;
   }
-  .btn-report::before {
-    content: '📍';
-    margin-right: 6px;
-    font-size: 13px;
-  }
-  .btn-report:hover { opacity: 0.9; transform: translateY(-2px); box-shadow: 0 6px 20px rgba(255,209,0,0.35); animation: none; }
-  @keyframes reportPulse {
-    0%,100% { box-shadow: 0 0 0 0 rgba(255,209,0,0.55); }
-    50%      { box-shadow: 0 0 0 8px rgba(255,209,0,0); }
-  }
+  .btn-report:hover { opacity: 0.85; transform: translateY(-1px); }
 
   /* ── MAIN ── */
   main {
@@ -670,7 +658,7 @@
   <div class="header-right">
     <span class="nav-link" onclick="scrollTo(0,999999)">analytics</span>
     <span class="nav-link" id="caronaNav" onclick="document.getElementById('caronaSection').scrollIntoView({behavior:'smooth'})">carona</span>
-    <button class="btn-report" onclick="openModal()">REPORTAR STATUS</button>
+    <button class="btn-report" onclick="openModal()">+ REPORTAR</button>
   </div>
 </header>
 
@@ -848,35 +836,6 @@
   </div>
 </div>
 
-<!-- Funções globais de UI (fora do module para ficarem disponíveis imediatamente) -->
-<script>
-function openModal() {
-  document.getElementById('modalBg').classList.add('open');
-  document.getElementById('reportStatus').onchange = function() {
-    document.getElementById('filaField').style.display = this.value === 'cheio' ? 'block' : 'none';
-  };
-}
-function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
-function updateRange() {
-  document.getElementById('rangeVal').textContent = document.getElementById('reportFila').value + ' carros';
-}
-function switchTab(el, mode) {
-  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-  el.classList.add('active');
-  if (window._chartMode !== undefined) window._chartMode = mode;
-  if (window._switchTabModule) window._switchTabModule(el, mode);
-}
-function submitReport() {
-  if (window._submitReportModule) window._submitReportModule();
-}
-function refreshData() {
-  if (window._refreshDataModule) window._refreshDataModule();
-}
-function registrarCarona() {
-  if (window._showToast) window._showToast('🚗 Em breve! Cadastre-se na lista de espera.');
-}
-</script>
-
 <!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
@@ -911,7 +870,6 @@ const TOTAL_VAGAS = 180;
 let chartMode     = 'hora';
 let recentReports = [];   // mantido em memória pelo listener
 let reportesHojeCount = 0;
-let currentOcupacao   = null; // ocupação dinâmica, ajustada por reportes
 
 // ══════════════════════════════════════════════
 //  PAGE VIEW COUNTER  (Firestore: doc views/counters)
@@ -984,10 +942,8 @@ function startReportsListener() {
 }
 
 // ══════════════════════════════════════════════
-//  OCUPAÇÃO DINÂMICA — ajustada pelos reportes
+//  STATUS LOGIC
 // ══════════════════════════════════════════════
-let currentOcupacao = null; // null = não inicializado ainda
-
 function computeStatus() {
   if (!recentReports.length) return fakeStatus();
 
@@ -1003,13 +959,11 @@ function computeStatus() {
     ? cheioDocs.reduce((s, r) => s + (r.fila || 0), 0) / cheioDocs.length
     : 0;
 
-  // Usa ocupação dinâmica se já foi inicializada, senão usa fake como base
-  if (currentOcupacao === null) {
-    const fake = fakeStatus();
-    currentOcupacao = fake.ocupacao;
-  }
+  const ocupacao = status === 'cheio' ? 100
+    : status === 'quase' ? Math.floor(70 + Math.random()*20)
+    : Math.floor(10 + Math.random()*50);
 
-  return { status, ocupacao: currentOcupacao, fila: Math.round(avgFila), reportes: recentReports.length };
+  return { status, ocupacao, fila: Math.round(avgFila), reportes: recentReports.length };
 }
 
 function fakeStatus() {
@@ -1043,8 +997,8 @@ function applyStatus(s) {
   document.getElementById('reportesHoje').textContent   = reportesHojeCount || (recentReports.length || '—');
   document.getElementById('picoHoje').textContent       = pct;
 
-  // ✅ 1,3 minutos por carro
-  const avg = Math.max(0, Math.round(s.fila * 1.3));
+  // ✅ 1 minuto por carro
+  const avg = Math.max(0, Math.round(s.fila * 1));
   document.getElementById('tempoMedio').textContent  = avg || '< 1';
   document.getElementById('lastUpdate').textContent  = new Date().toLocaleTimeString('pt-BR');
 
@@ -1056,7 +1010,7 @@ function applyStatus(s) {
     txt.textContent   = 'VAGAS DISPONÍVEIS';
     title.textContent = 'Tem vaga! Pode vir. ✅';
   } else if (s.status === 'quase') {
-    txt.textContent   = 'QUASE CHEIO (~95%)';
+    txt.textContent   = 'QUASE CHEIO';
     title.textContent = 'Atenção — restam poucas vagas ⚠️';
   } else {
     txt.textContent   = 'COMPLETAMENTE CHEIO';
@@ -1146,45 +1100,31 @@ function fakeHourOccupancy(h) {
   return base[h] + Math.floor((Math.random()-0.5)*12);
 }
 
-function switchTabInternal(el, mode) {
+function switchTab(el, mode) {
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
   el.classList.add('active');
   chartMode = mode;
   renderChart(mode);
 }
-window.switchTab = switchTabInternal; // fallback direto também
+window.switchTab = switchTab;
 
 // ══════════════════════════════════════════════
 //  MODAL & REPORT SUBMIT
 // ══════════════════════════════════════════════
+function openModal() {
+  document.getElementById('modalBg').classList.add('open');
+  document.getElementById('reportStatus').onchange = function() {
+    document.getElementById('filaField').style.display = this.value === 'cheio' ? 'block' : 'none';
+  };
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
+function updateRange() {
+  document.getElementById('rangeVal').textContent = document.getElementById('reportFila').value + ' carros';
+}
 
 async function submitReport() {
   const status = document.getElementById('reportStatus').value;
   const fila   = parseInt(document.getElementById('reportFila').value) || 0;
-
-  // ── Ajusta ocupação dinamicamente ANTES de salvar ──
-  const h = new Date().getHours();
-  const isTarde = h >= 13; // tarde = após 13h
-
-  if (currentOcupacao === null) {
-    // Inicializa com base no horário se ainda não há dados
-    currentOcupacao = fakeStatus().ocupacao;
-  }
-
-  if (status === 'livre') {
-    if (isTarde) {
-      // Tarde: cada reporte "tem vagas" diminui 5%, mínimo 50%
-      currentOcupacao = Math.max(50, currentOcupacao - 5);
-    } else {
-      // Manhã: cada reporte "tem vagas" aumenta 5%, máximo 90%
-      currentOcupacao = Math.min(90, currentOcupacao + 5);
-    }
-  } else if (status === 'quase') {
-    // "Quase cheio" → fixa em 95%
-    currentOcupacao = 95;
-  } else if (status === 'cheio') {
-    currentOcupacao = 100;
-  }
 
   try {
     await addDoc(collection(db, 'reports'), {
@@ -1194,11 +1134,7 @@ async function submitReport() {
     });
     closeModal();
     showToast('✅ Reporte enviado! Obrigado!');
-
-    // Atualiza o status imediatamente após o reporte
-    const s = computeStatus();
-    applyStatus(s);
-    renderChart(chartMode);
+    // listener onSnapshot vai atualizar automaticamente
   } catch(e) {
     console.error('submitReport err', e);
     showToast('❌ Erro ao enviar. Verifique a conexão.');
@@ -1232,24 +1168,20 @@ function showToast(msg) {
 }
 
 // ══════════════════════════════════════════════
-//  EXPOSE via window (chamados por onclick no HTML)
+//  EXPOSE globals (chamados por onclick no HTML)
 // ══════════════════════════════════════════════
-window._submitReportModule = submitReport;
-window._refreshDataModule  = refreshData;
-window._switchTabModule    = switchTabInternal;
-window._showToast          = showToast;
-// Expõe diretamente também para robustez máxima
+window.openModal      = openModal;
+window.closeModal     = closeModal;
+window.updateRange    = updateRange;
 window.submitReport   = submitReport;
+window.registrarCarona = registrarCarona;
 window.refreshData    = refreshData;
-window.switchTab      = switchTabInternal;
 
 // ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  const initial = fakeStatus();
-  currentOcupacao = initial.ocupacao;    // inicializa ocupação dinâmica
-  applyStatus(initial);     // mostra algo enquanto carrega
+  applyStatus(fakeStatus());     // mostra algo enquanto carrega
   trackPageView();
   loadAndRenderViews();
   startReportsListener();        // listener em tempo real
