@@ -1024,6 +1024,7 @@ function startReportsListener() {
   const cutoff = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
   const q = query(
      collection(db, 'reports'),
+     where('ts', '>=', cutoff),
      orderBy('ts', 'desc')
      );
 
@@ -1033,6 +1034,11 @@ function startReportsListener() {
     // Conta reportes de hoje para o card
     const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
     reportesHojeCount = snap.docs.filter(d => d.data().ts.toMillis() >= startOfDay.getTime()).length;
+
+    // ✅ Restaura ocupação do banco: usa o campo salvo no reporte mais recente
+    if (recentReports.length > 0 && recentReports[0].ocupacao != null) {
+      currentOcupacao = recentReports[0].ocupacao;
+    }
 
     applyStatus(computeStatus());
     renderChart(chartMode);
