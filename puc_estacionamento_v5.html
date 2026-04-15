@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PUC Parking — Estacionamento Rotativo</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --azul: #0033A0;
+    --ouro: #FFD100;
+    --branco: #F5F5F0;
+    --preto: #0A0A0A;
+    --cinza: #1C1C1C;
+    --verde: #00C17C;
+    --vermelho: #FF3B3B;
+    --laranja: #FF8C00;
+    --surface: #141414;
+    --card: #1E1E1E;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--preto);
+    color: var(--branco);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .logo-badge {
+    background: var(--azul);
+    color: var(--ouro);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+  }
+  .logo-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--branco);
+    letter-spacing: 0.05em;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-link {
+    font-size: 12px;
+    color: rgba(245,245,240,0.5);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .nav-link:hover { color: var(--ouro); }
+
+  .btn-report {
+    background: var(--ouro);
+    color: var(--preto);
+    border: 2px solid transparent;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.07em;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 0 0 0 rgba(255,209,0,0.5);
+    animation: reportPulse 2s infinite;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .btn-report .btn-report-icon {
+    font-size: 15px;
+    line-height: 1;
+  }
+  .btn-report .btn-report-sub {
+    display: block;
+    font-size: 8px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    color: rgba(10,10,10,0.65);
+    line-height: 1;
+    margin-top: 2px;
+  }
+  .btn-report .btn-report-inner {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+  .btn-report:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,209,0,0.45); animation: none; border-color: rgba(255,255,255,0.3); }
+  .btn-report:active { transform: translateY(0); }
+  @keyframes reportPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,209,0,0.6), 0 2px 8px rgba(255,209,0,0.2); }
+    50%      { box-shadow: 0 0 0 10px rgba(255,209,0,0), 0 2px 8px rgba(255,209,0,0.2); }
+  }
+
+  /* ── MAIN ── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* ── HERO STATUS ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .status-ring {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 28px;
+  }
+  .status-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 10; }
+  .ring-fill {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1), stroke 0.5s;
+    stroke-dasharray: 502;
+  }
+  .ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .ring-pct {
+    font-family: 'Space Mono', monospace;
+    font-size: 34px;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .ring-sub {
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: rgba(245,245,240,0.45);
+    margin-top: 4px;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    transition: background 0.5s, color 0.5s;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(1.3); }
+  }
+  .status-badge.livre { background: rgba(0,193,124,0.15); color: var(--verde); border: 1px solid rgba(0,193,124,0.3); }
+  .status-badge.livre .status-dot { background: var(--verde); }
+  .status-badge.cheio { background: rgba(255,59,59,0.15); color: var(--vermelho); border: 1px solid rgba(255,59,59,0.3); }
+  .status-badge.cheio .status-dot { background: var(--vermelho); }
+  .status-badge.quase { background: rgba(255,140,0,0.15); color: var(--laranja); border: 1px solid rgba(255,140,0,0.3); }
+  .status-badge.quase .status-dot { background: var(--laranja); }
+
+  .hero-title {
+    font-size: clamp(26px,5vw,40px);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .hero-sub {
+    font-size: 14px;
+    color: rgba(245,245,240,0.5);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── CARDS GRID ── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-2px); }
+
+  .card-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: rgba(245,245,240,0.4);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .card-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ouro);
+    line-height: 1;
+  }
+  .card-unit {
+    font-size: 11px;
+    color: rgba(245,245,240,0.35);
+    margin-top: 4px;
+  }
+
+  /* ── UPDATE BAR ── */
+  .update-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 40px;
+    font-size: 11px;
+    color: rgba(245,245,240,0.4);
+    font-family: 'Space Mono', monospace;
+  }
+  .update-bar span { color: rgba(245,245,240,0.7); }
+
+  .btn-refresh {
+    background: none;
+    border: 1px solid var(--border);
+    color: rgba(245,245,240,0.5);
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .btn-refresh:hover { border-color: var(--ouro); color: var(--ouro); }
+  .btn-refresh.spinning { animation: spin 0.6s linear; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── REPORT MODAL ── */
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+
+  .modal {
+    background: var(--cinza);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 32px;
+    width: 90%;
+    max-width: 440px;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .modal p {
+    font-size: 12px;
+    color: rgba(245,245,240,0.45);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(245,245,240,0.5);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .field select, .field input[type=range] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--branco);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+  .field select:focus { outline: none; border-color: var(--ouro); }
+
+  .range-display {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: rgba(245,245,240,0.4);
+    margin-top: 5px;
+  }
+  .range-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ouro);
+    text-align: center;
+    margin: 4px 0;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .btn-cancel {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border);
+    color: rgba(245,245,240,0.5);
+    padding: 11px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-cancel:hover { border-color: rgba(255,255,255,0.3); color: var(--branco); }
+  .btn-submit {
+    flex: 2;
+    background: var(--ouro);
+    border: none;
+    color: var(--preto);
+    padding: 11px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .btn-submit:hover { opacity: 0.85; }
+
+  /* ── FILA SECTION ── */
+  .fila-section {
+    background: rgba(255,59,59,0.05);
+    border: 1px solid rgba(255,59,59,0.2);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 40px;
+    display: none;
+  }
+  .fila-section.visible { display: block; }
+  .fila-title {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--vermelho);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+  .fila-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .fila-stat-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--vermelho);
+  }
+  .fila-stat-label {
+    font-size: 11px;
+    color: rgba(245,245,240,0.4);
+    margin-top: 2px;
+  }
+
+  /* ── ANALYTICS ── */
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: rgba(245,245,240,0.35);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .analytics-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .tab {
+    flex: 1;
+    padding: 7px 4px;
+    border-radius: 5px;
+    border: none;
+    background: none;
+    color: rgba(245,245,240,0.4);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .tab.active {
+    background: var(--azul);
+    color: var(--ouro);
+  }
+
+  .chart-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 40px;
+  }
+
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 100px;
+    margin-bottom: 8px;
+  }
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+  }
+  .bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    background: var(--azul);
+    transition: height 0.8s cubic-bezier(.4,0,.2,1);
+    min-height: 4px;
+    position: relative;
+  }
+  .bar.highlight { background: var(--ouro); }
+  .bar-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: rgba(245,245,240,0.3);
+    white-space: nowrap;
+  }
+
+  .analytics-summary {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 10px;
+    margin-bottom: 40px;
+  }
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .summary-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ouro);
+  }
+  .summary-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: rgba(245,245,240,0.35);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* ── CARONA ── */
+  .carona-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .carona-section::before {
+    content: '🚗';
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 64px;
+    opacity: 0.07;
+  }
+  .carona-badge {
+    display: inline-block;
+    background: rgba(0,51,160,0.3);
+    border: 1px solid rgba(0,51,160,0.5);
+    color: #6B9FFF;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .carona-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .carona-desc {
+    font-size: 13px;
+    color: rgba(245,245,240,0.45);
+    line-height: 1.7;
+    margin-bottom: 20px;
+    max-width: 380px;
+  }
+  .btn-carona {
+    background: var(--azul);
+    color: var(--ouro);
+    border: none;
+    padding: 10px 22px;
+    border-radius: 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.06em;
+  }
+  .btn-carona:hover { opacity: 0.8; }
+
+  /* ── AD SLOT ── */
+  .ad-slot {
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 40px;
+    color: rgba(245,245,240,0.2);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.1em;
+  }
+  .ad-slot span { display: block; font-size: 9px; margin-top: 4px; opacity: 0.6; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(245,245,240,0.2);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.08em;
+  }
+  footer a { color: rgba(245,245,240,0.35); text-decoration: none; }
+  footer a:hover { color: var(--ouro); }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--verde);
+    color: var(--preto);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── BOTÃO FLUTUANTE MOBILE ── */
+  .btn-report-float {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    background: var(--ouro);
+    color: var(--preto);
+    border: none;
+    padding: 14px 32px;
+    border-radius: 999px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    box-shadow: 0 8px 28px rgba(255,209,0,0.5);
+    animation: floatPulse 2s infinite;
+    white-space: nowrap;
+  }
+  @keyframes floatPulse {
+    0%,100% { box-shadow: 0 8px 28px rgba(255,209,0,0.5); }
+    50%      { box-shadow: 0 8px 40px rgba(255,209,0,0.8); }
+  }
+  .btn-report-float:hover { opacity: 0.9; animation: none; }
+  @media (max-width: 500px) {
+    .btn-report-float { display: flex; align-items: center; gap: 8px; }
+    .analytics-summary { grid-template-columns: repeat(2,1fr); }
+    .cards { grid-template-columns: repeat(2,1fr); }
+    .fila-stats { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a class="logo" href="#">
+    <span class="logo-badge">PUC-RIO</span>
+    <span class="logo-text">PARKING</span>
+  </a>
+  <div class="header-right">
+    <span class="nav-link" onclick="scrollTo(0,999999)">analytics</span>
+    <span class="nav-link" id="caronaNav" onclick="document.getElementById('caronaSection').scrollIntoView({behavior:'smooth'})">carona</span>
+    <button class="btn-report" onclick="openModal()">
+      <span class="btn-report-icon">📍</span>
+      <span class="btn-report-inner">
+        REPORTAR STATUS
+        <span class="btn-report-sub">vi agora · ajude a comunidade</span>
+      </span>
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main>
+
+  <!-- HERO STATUS -->
+  <div class="hero">
+    <div class="status-ring">
+      <svg viewBox="0 0 180 180">
+        <circle class="ring-bg" cx="90" cy="90" r="80"/>
+        <circle class="ring-fill" id="ringFill" cx="90" cy="90" r="80" stroke-dashoffset="502"/>
+      </svg>
+      <div class="ring-label">
+        <div class="ring-pct" id="pctDisplay">—</div>
+        <div class="ring-sub">OCUPAÇÃO</div>
+      </div>
+    </div>
+
+    <div id="statusBadge" class="status-badge">
+      <div class="status-dot"></div>
+      <span id="statusText">CARREGANDO…</span>
+    </div>
+
+    <div class="hero-title" id="heroTitle">Verificando vagas…</div>
+    <div class="hero-sub">Estacionamento Rotativo · Gávea, Rio de Janeiro</div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">🅿️</div>
+      <div class="card-label">Vagas Livres</div>
+      <div class="card-value" id="vagasLivres">—</div>
+      <div class="card-unit">de 180 total</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-label">Reportes Hoje</div>
+      <div class="card-value" id="reportesHoje">—</div>
+      <div class="card-unit">da comunidade</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⏱️</div>
+      <div class="card-label">Tempo Médio Fila</div>
+      <div class="card-value" id="tempoMedio">—</div>
+      <div class="card-unit">minutos</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔥</div>
+      <div class="card-label">Pico Hoje</div>
+      <div class="card-value" id="picoHoje">—</div>
+      <div class="card-unit">% ocupação</div>
+    </div>
+  </div>
+
+  <!-- UPDATE BAR -->
+  <div class="update-bar">
+    <span>Última atualização: <span id="lastUpdate">—</span></span>
+    <button class="btn-refresh" id="refreshBtn" onclick="refreshData()">↻ ATUALIZAR</button>
+  </div>
+
+  <!-- FILA SECTION (only when full) -->
+  <div class="fila-section" id="filaSection">
+    <div class="fila-title">⚠ Estacionamento Cheio — Info da Fila</div>
+    <div class="fila-stats">
+      <div>
+        <div class="fila-stat-val" id="filaCarros">—</div>
+        <div class="fila-stat-label">carros na fila quando você chegou</div>
+      </div>
+      <div>
+        <div class="fila-stat-val" id="filaTempo">—</div>
+        <div class="fila-stat-label">min. estimados de espera</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AD SLOT TOP -->
+  <div class="ad-slot">
+    ESPAÇO PUBLICITÁRIO — 728×90
+    <span>Anuncie aqui · contato@seudominio.com</span>
+  </div>
+
+  <!-- ANALYTICS -->
+  <div class="section-title">Visualizações do Site</div>
+
+  <div class="analytics-summary">
+    <div class="summary-card">
+      <div class="summary-num" id="viewsHora">—</div>
+      <div class="summary-label">Esta Hora</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-num" id="viewsDia">—</div>
+      <div class="summary-label">Hoje</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-num" id="viewsSemana">—</div>
+      <div class="summary-label">Esta Semana</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-num" id="viewsMes">—</div>
+      <div class="summary-label">Este Mês</div>
+    </div>
+  </div>
+
+  <div class="section-title">Ocupação ao Longo do Dia</div>
+
+  <div class="chart-container">
+    <div class="analytics-tabs">
+      <button class="tab active" onclick="switchTab(this,'hora')">HORA A HORA</button>
+      <button class="tab" onclick="switchTab(this,'dia')">POR DIA</button>
+      <button class="tab" onclick="switchTab(this,'semana')">SEMANAS</button>
+    </div>
+    <div class="chart-bars" id="chartBars"></div>
+    <div id="chartLabels" style="display:flex;gap:6px;"></div>
+  </div>
+
+  <!-- AD SLOT MIDDLE -->
+  <div class="ad-slot">
+    ESPAÇO PUBLICITÁRIO — 300×250
+    <span>Ideal para lanchonetes, impressoras, materiais acadêmicos</span>
+  </div>
+
+  <!-- CARONA SECTION -->
+  <div class="carona-section" id="caronaSection">
+    <div class="carona-badge">EM BREVE</div>
+    <div class="carona-title">Grupos de Carona 🚗</div>
+    <div class="carona-desc">
+      Conecte-se com colegas que fazem o mesmo trajeto. Divida combustível, reduza emissões e chegue mais tranquilo à PUC-Rio.
+    </div>
+    <button class="btn-carona" onclick="registrarCarona()">QUERO PARTICIPAR</button>
+  </div>
+
+  <!-- AD SLOT BOTTOM -->
+  <div class="ad-slot">
+    ESPAÇO PUBLICITÁRIO — 728×90
+    <span>Anuncie para toda a comunidade PUC-Rio</span>
+  </div>
+
+</main>
+
+<!-- BOTÃO FLUTUANTE MOBILE -->
+<button class="btn-report-float" onclick="openModal()">
+  📍 REPORTAR AGORA
+</button>
+
+<footer>
+  <p>PUC PARKING · feito pela comunidade · não oficial &nbsp;|&nbsp; <a href="#">reportar erro</a> &nbsp;|&nbsp; <a href="#">anuncie aqui</a></p>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<!-- REPORT MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2>Reportar Situação 🅿️</h2>
+    <p>Ajude a comunidade! Informe o que você viu agora no estacionamento. Seus dados são anônimos.</p>
+
+    <div class="field">
+      <label>Status do estacionamento</label>
+      <select id="reportStatus">
+        <option value="livre">✅ Tem vagas disponíveis</option>
+        <option value="quase">⚠️ Quase cheio</option>
+        <option value="cheio">🔴 Completamente cheio</option>
+      </select>
+    </div>
+
+    <div class="field" id="filaField" style="display:none;">
+      <label>Carros na fila (estimativa)</label>
+      <input type="range" id="reportFila" min="0" max="40" value="5" oninput="updateRange()">
+      <div class="range-val" id="rangeVal">5 carros</div>
+      <div class="range-display"><span>0</span><span>40+</span></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">CANCELAR</button>
+      <button class="btn-submit" onclick="submitReport()">ENVIAR REPORTE ↗</button>
+    </div>
+  </div>
+</div>
+
+<!-- Funções globais de UI (fora do module para ficarem disponíveis imediatamente) -->
+<script>
+function openModal() {
+  document.getElementById('modalBg').classList.add('open');
+  document.getElementById('reportStatus').onchange = function() {
+    document.getElementById('filaField').style.display = this.value === 'cheio' ? 'block' : 'none';
+  };
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
+function updateRange() {
+  document.getElementById('rangeVal').textContent = document.getElementById('reportFila').value + ' carros';
+}
+function switchTab(el, mode) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (window._switchTabModule) window._switchTabModule(el, mode);
+}
+function submitReport() {
+  if (window._submitReportModule) {
+    window._submitReportModule();
+  } else {
+    alert('Aguarde o carregamento do app e tente novamente.');
+  }
+}
+function refreshData() {
+  if (window._refreshDataModule) window._refreshDataModule();
+}
+function registrarCarona() {
+  if (window._showToast) window._showToast('🚗 Em breve! Cadastre-se na lista de espera.');
+}
+</script>
+
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, query, where,
+  orderBy, onSnapshot, Timestamp, getDocs,
+  doc, setDoc, getDoc, increment, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ══════════════════════════════════════════════
+//  ⚙️  FIREBASE CONFIG
+//  Substitua pelos seus dados do Firebase Console
+//  (console.firebase.google.com → seu projeto → ⚙️ → Web app)
+// ══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyAWQJK5PzdWN6RP-JLsgqOVeuIJS39KDXo",
+  authDomain: "temvaga-puc-rio.firebaseapp.com",
+  projectId: "temvaga-puc-rio",
+  storageBucket: "temvaga-puc-rio.firebasestorage.app",
+  messagingSenderId: "67967248658",
+  appId: "1:67967248658:web:b742d20004e84ee491abcb",
+  measurementId: "G-XDER0PX4K6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ══════════════════════════════════════════════
+//  GLOBALS
+// ══════════════════════════════════════════════
+const TOTAL_VAGAS = 180;
+let chartMode     = 'hora';
+let recentReports = [];   // mantido em memória pelo listener
+let reportesHojeCount = 0;
+let currentOcupacao   = null; // ocupação dinâmica, ajustada por reportes
+
+// ══════════════════════════════════════════════
+//  PAGE VIEW COUNTER  (Firestore: doc views/counters)
+// ══════════════════════════════════════════════
+async function trackPageView() {
+  const now    = new Date();
+  const dayKey = now.toISOString().slice(0,10);          // "2025-04-15"
+  const hrKey  = dayKey + 'H' + now.getHours();          // "2025-04-15H10"
+  const wkKey  = dayKey.slice(0,7) + 'W' +
+                 Math.min(3, Math.floor((now.getDate()-1)/7)); // "2025-04W1"
+  const moKey  = dayKey.slice(0,7);                       // "2025-04"
+
+  // Throttle: só conta 1x por hora por dispositivo (sessionStorage é local mas só dura a sessão)
+  const ssKey = 'pucpk_view_' + hrKey;
+  if (sessionStorage.getItem(ssKey)) return;
+  sessionStorage.setItem(ssKey, '1');
+
+  const ref = doc(db, 'views', 'counters');
+  await setDoc(ref, {
+    [hrKey]: increment(1),
+    [dayKey]: increment(1),
+    [wkKey]:  increment(1),
+    [moKey]:  increment(1),
+  }, { merge: true });
+
+  loadAndRenderViews();
+}
+
+async function loadAndRenderViews() {
+  const now    = new Date();
+  const dayKey = now.toISOString().slice(0,10);
+  const hrKey  = dayKey + 'H' + now.getHours();
+  const wkKey  = dayKey.slice(0,7) + 'W' +
+                 Math.min(3, Math.floor((now.getDate()-1)/7));
+  const moKey  = dayKey.slice(0,7);
+
+  try {
+    const snap = await getDoc(doc(db, 'views', 'counters'));
+    const d    = snap.exists() ? snap.data() : {};
+    document.getElementById('viewsHora').textContent   = d[hrKey]  || 0;
+    document.getElementById('viewsDia').textContent    = d[dayKey] || 0;
+    document.getElementById('viewsSemana').textContent = d[wkKey]  || 0;
+    document.getElementById('viewsMes').textContent    = d[moKey]  || 0;
+  } catch(e) { console.warn('views load err', e); }
+}
+
+// ══════════════════════════════════════════════
+//  REPORTS — real-time listener (últimos 30 min)
+// ══════════════════════════════════════════════
+function startReportsListener() {
+  const cutoff = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
+  const q = query(
+     collection(db, 'reports'),
+     orderBy('ts', 'desc')
+     );
+
+  onSnapshot(q, snap => {
+    recentReports = snap.docs.map(d => ({ id: d.id, ...d.data(), tsMs: d.data().ts.toMillis() }));
+
+    // Conta reportes de hoje para o card
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    reportesHojeCount = snap.docs.filter(d => d.data().ts.toMillis() >= startOfDay.getTime()).length;
+
+    applyStatus(computeStatus());
+    renderChart(chartMode);
+  }, err => {
+    console.warn('listener err', err);
+    applyStatus(fakeStatus());
+  });
+}
+
+// ══════════════════════════════════════════════
+//  OCUPAÇÃO DINÂMICA — ajustada pelos reportes
+// ══════════════════════════════════════════════
+// currentOcupacao já declarado acima nos GLOBALS
+
+function computeStatus() {
+  if (!recentReports.length) return fakeStatus();
+
+  const counts = { livre: 0, quase: 0, cheio: 0 };
+  recentReports.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
+
+  let status = 'livre';
+  if (counts.cheio >= counts.livre && counts.cheio >= counts.quase) status = 'cheio';
+  else if (counts.quase >= counts.livre) status = 'quase';
+
+  const cheioDocs = recentReports.filter(r => r.status === 'cheio');
+  const avgFila   = cheioDocs.length
+    ? cheioDocs.reduce((s, r) => s + (r.fila || 0), 0) / cheioDocs.length
+    : 0;
+
+  // Usa ocupação ajustada pelos reportes; se ainda não há nenhum, mantém o placeholder do horário
+  if (currentOcupacao === null) {
+    currentOcupacao = fakeStatus().ocupacao;
+  }
+
+  return { status, ocupacao: currentOcupacao, fila: Math.round(avgFila), reportes: recentReports.length };
+}
+
+function fakeStatus() {
+  const h = new Date().getHours();
+  let ocupacao;
+  if      (h < 7 || h > 22) ocupacao = 5;
+  else if (h < 9)            ocupacao = 30;
+  else if (h < 11)           ocupacao = 85;
+  else if (h < 14)           ocupacao = 98;
+  else if (h < 16)           ocupacao = 75;
+  else if (h < 19)           ocupacao = 55;
+  else                       ocupacao = 25;
+  const status = ocupacao >= 100 ? 'cheio' : ocupacao >= 70 ? 'quase' : 'livre';
+  return { status, ocupacao, fila: status === 'cheio' ? 8 : 0, reportes: 0 };
+}
+
+function applyStatus(s) {
+  const pct    = s.ocupacao;
+  const livres = Math.round(TOTAL_VAGAS * (1 - pct/100));
+
+  // Ring
+  const offset = 502 * (1 - pct/100);
+  const ring   = document.getElementById('ringFill');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = s.status === 'cheio' ? 'var(--vermelho)'
+    : s.status === 'quase' ? 'var(--laranja)' : 'var(--verde)';
+
+  document.getElementById('pctDisplay').textContent     = pct + '%';
+  document.getElementById('vagasLivres').textContent    = livres;
+  document.getElementById('reportesHoje').textContent   = reportesHojeCount || (recentReports.length || '—');
+  document.getElementById('picoHoje').textContent       = pct;
+
+  // ✅ 1,3 minutos por carro
+  const avg = s.fila > 0 ? Math.round(s.fila * 1.3) : 0;
+  document.getElementById('tempoMedio').textContent  = avg > 0 ? avg : '< 1';
+  document.getElementById('lastUpdate').textContent  = new Date().toLocaleTimeString('pt-BR');
+
+  const badge = document.getElementById('statusBadge');
+  const txt   = document.getElementById('statusText');
+  const title = document.getElementById('heroTitle');
+  badge.className = 'status-badge ' + s.status;
+  if (s.status === 'livre') {
+    txt.textContent   = 'VAGAS DISPONÍVEIS';
+    title.textContent = 'Tem vaga! Pode vir. ✅';
+  } else if (s.status === 'quase') {
+    txt.textContent   = 'QUASE CHEIO';
+    title.textContent = 'Atenção — restam poucas vagas ⚠️';
+  } else {
+    txt.textContent   = 'COMPLETAMENTE CHEIO';
+    title.textContent = 'Estacionamento lotado — há fila 🔴';
+  }
+
+  const filaEl = document.getElementById('filaSection');
+  if (s.status === 'cheio') {
+    filaEl.classList.add('visible');
+    const filaCarros = s.fila || Math.floor(5+Math.random()*10);
+    document.getElementById('filaCarros').textContent = filaCarros;
+    document.getElementById('filaTempo').textContent  = Math.round(filaCarros * 1.3);
+  } else {
+    filaEl.classList.remove('visible');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CHART (ocupação por hora, baseado em reportes reais do Firestore)
+// ══════════════════════════════════════════════
+async function renderChart(mode) {
+  const container = document.getElementById('chartBars');
+  const labelsEl  = document.getElementById('chartLabels');
+  container.innerHTML = '';
+  labelsEl.innerHTML  = '';
+
+  let data, labs;
+
+  if (mode === 'hora') {
+    const h = new Date().getHours();
+    labs = Array.from({length:12}, (_,i) => ((h - 11 + i + 24) % 24) + 'h');
+
+    // Tenta pegar dados reais do Firestore das últimas 12h
+    try {
+      const cutoff12 = Timestamp.fromMillis(Date.now() - 12 * 60 * 60 * 1000);
+      const snap = await getDocs(query(
+        collection(db, 'reports'),
+        where('ts', '>=', cutoff12),
+        orderBy('ts', 'asc')
+      ));
+      const byHr = {};
+      snap.docs.forEach(d => {
+        const hh = new Date(d.data().ts.toMillis()).getHours();
+        if (!byHr[hh]) byHr[hh] = { cheio:0, quase:0, livre:0, total:0 };
+        byHr[hh][d.data().status]++;
+        byHr[hh].total++;
+      });
+      data = labs.map(l => {
+        const hh = parseInt(l);
+        const b  = byHr[hh];
+        if (!b || !b.total) return fakeHourOccupancy(hh);
+        return Math.round((b.cheio * 100 + b.quase * 80 + b.livre * 30) / b.total);
+      });
+    } catch { data = labs.map(l => fakeHourOccupancy(parseInt(l))); }
+
+  } else if (mode === 'dia') {
+    labs = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    data = labs.map(() => Math.floor(20+Math.random()*80));
+  } else {
+    labs = ['Sem 1','Sem 2','Sem 3','Sem 4'];
+    data = labs.map(() => Math.floor(30+Math.random()*70));
+  }
+
+  const max  = Math.max(...data, 1);
+  const curH = new Date().getHours();
+
+  data.forEach((val, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'bar-wrap';
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    if (mode === 'hora' && parseInt(labs[i]) === curH) bar.classList.add('highlight');
+    bar.style.height = '0px';
+    wrap.appendChild(bar);
+    container.appendChild(wrap);
+
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'flex:1;text-align:center;font-size:9px;color:rgba(245,245,240,0.25);font-family:"Space Mono",monospace;';
+    lbl.textContent = labs[i];
+    labelsEl.appendChild(lbl);
+
+    setTimeout(() => { bar.style.height = (val / max * 90) + 'px'; }, 50 + i*30);
+  });
+}
+
+function fakeHourOccupancy(h) {
+  const base = [5,5,5,5,5,5,5,25,60,85,95,98,98,90,75,65,55,50,40,35,25,15,10,5];
+  return base[h] + Math.floor((Math.random()-0.5)*12);
+}
+
+function switchTabInternal(el, mode) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  chartMode = mode;
+  renderChart(mode);
+}
+window.switchTab = switchTabInternal; // fallback direto também
+
+// ══════════════════════════════════════════════
+//  MODAL & REPORT SUBMIT
+// ══════════════════════════════════════════════
+
+async function submitReport() {
+  const status = document.getElementById('reportStatus').value;
+  const fila   = parseInt(document.getElementById('reportFila').value) || 0;
+
+  // ── Ajusta ocupação dinamicamente ANTES de salvar ──
+  const h = new Date().getHours();
+  const isTarde = h >= 13; // tarde = após 13h
+
+  if (currentOcupacao === null) {
+    currentOcupacao = fakeStatus().ocupacao;
+  }
+
+  if (status === 'livre') {
+    if (isTarde) {
+      // Tarde: cada reporte "tem vagas" diminui 5%, mínimo 50%
+      currentOcupacao = Math.max(50, currentOcupacao - 5);
+    } else {
+      // Manhã: cada reporte "tem vagas" aumenta 5%, máximo 90%
+      currentOcupacao = Math.min(90, currentOcupacao + 5);
+    }
+  } else if (status === 'quase') {
+    // "Quase cheio" → fixa em 95%
+    currentOcupacao = 95;
+  } else if (status === 'cheio') {
+    currentOcupacao = 100;
+  }
+
+  try {
+    await addDoc(collection(db, 'reports'), {
+      status,
+      fila,
+      ocupacao: currentOcupacao,
+      ts: Timestamp.now()
+    });
+
+    // Fecha modal e avisa
+    document.getElementById('modalBg').classList.remove('open');
+    showToast('✅ Reporte enviado! Obrigado!');
+
+    // Atualiza o status imediatamente com a nova ocupação
+    const newStatusLabel = currentOcupacao >= 100 ? 'cheio' : currentOcupacao >= 70 ? 'quase' : 'livre';
+    applyStatus({ status: newStatusLabel, ocupacao: currentOcupacao, fila });
+    renderChart(chartMode);
+  } catch(e) {
+    console.error('submitReport err', e);
+    showToast('❌ Erro ao enviar. Verifique a conexão.');
+  }
+}
+
+function registrarCarona() { showToast('🚗 Em breve! Cadastre-se na lista de espera.'); }
+
+// ══════════════════════════════════════════════
+//  REFRESH BUTTON
+// ══════════════════════════════════════════════
+function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  loadAndRenderViews();
+  setTimeout(() => {
+    btn.classList.remove('spinning');
+    // Usa computeStatus que preserva currentOcupacao já ajustado pelos reportes
+    applyStatus(computeStatus());
+    renderChart(chartMode);
+  }, 700);
+}
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+// ══════════════════════════════════════════════
+//  EXPOSE via window (chamados por onclick no HTML)
+// ══════════════════════════════════════════════
+window._submitReportModule = submitReport;
+window._refreshDataModule  = refreshData;
+window._switchTabModule    = switchTabInternal;
+window._showToast          = showToast;
+// Expõe diretamente também para robustez máxima
+window.submitReport   = submitReport;
+window.refreshData    = refreshData;
+window.switchTab      = switchTabInternal;
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  // Mostra estimativa por horário enquanto o Firestore carrega.
+  // currentOcupacao permanece null até o listener confirmar — assim
+  // o refresh nunca reseta o valor ajustado pelos reportes.
+  const placeholder = fakeStatus();
+  applyStatus(placeholder);
+  trackPageView();
+  loadAndRenderViews();
+  startReportsListener();        // listener em tempo real (sobrescreve o placeholder)
+  renderChart(chartMode);
+
+  // Re-renderiza views a cada 5 min
+  setInterval(loadAndRenderViews, 5 * 60 * 1000);
+});
+</script>
+
+</body>
+</html>
