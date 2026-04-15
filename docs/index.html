@@ -836,145 +836,188 @@
   </div>
 </div>
 
-<script>
-// ══════════════════════════════════════════════
-//  STORAGE HELPERS (localStorage — persiste entre sessões)
-// ══════════════════════════════════════════════
-const KEY_VIEWS   = 'pucpark_views';
-const KEY_REPORTS = 'pucpark_reports';
-
-function loadViews() {
-  try { return JSON.parse(localStorage.getItem(KEY_VIEWS)) || defaultViews(); }
-  catch { return defaultViews(); }
-}
-function saveViews(v) { localStorage.setItem(KEY_VIEWS, JSON.stringify(v)); }
-
-function loadReports() {
-  try { return JSON.parse(localStorage.getItem(KEY_REPORTS)) || []; }
-  catch { return []; }
-}
-function saveReports(r) { localStorage.setItem(KEY_REPORTS, JSON.stringify(r)); }
-
-function defaultViews() {
-  return {
-    hora: 0, dia: 0, semana: 0, mes: 0,
-    byHour: Array(24).fill(0),
-    byDay:  ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'].map(() => 0),
-    byWeek: ['S1','S2','S3','S4'].map(() => 0),
-    lastTs: null
-  };
-}
+<!-- Firebase SDK -->
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, query, where,
+  orderBy, onSnapshot, Timestamp, getDocs,
+  doc, setDoc, getDoc, increment, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 // ══════════════════════════════════════════════
-//  PAGE VIEW COUNTER
+//  ⚙️  FIREBASE CONFIG
+//  Substitua pelos seus dados do Firebase Console
+//  (console.firebase.google.com → seu projeto → ⚙️ → Web app)
 // ══════════════════════════════════════════════
-function trackPageView() {
-  const v   = loadViews();
-  const now = new Date();
-  const ts  = now.toISOString().slice(0,10) + 'H' + now.getHours();
+const firebaseConfig = {
+  apiKey: "AIzaSyAWQJK5PzdWN6RP-JLsgqOVeuIJS39KDXo",
+  authDomain: "temvaga-puc-rio.firebaseapp.com",
+  projectId: "temvaga-puc-rio",
+  storageBucket: "temvaga-puc-rio.firebasestorage.app",
+  messagingSenderId: "67967248658",
+  appId: "1:67967248658:web:b742d20004e84ee491abcb",
+  measurementId: "G-XDER0PX4K6"
+};
 
-  if (v.lastTs !== ts) {
-    v.hora   = (v.lastTs && v.lastTs.slice(0,13) === ts.slice(0,13)) ? v.hora + 1 : 1;
-    v.dia    += 1;
-    v.semana += 1;
-    v.mes    += 1;
-    v.byHour[now.getHours()]++;
-    v.byDay[now.getDay() === 0 ? 6 : now.getDay() - 1]++;
-    const wk = Math.min(3, Math.floor((now.getDate()-1)/7));
-    v.byWeek[wk]++;
-    v.lastTs = ts;
-    saveViews(v);
-  }
-  renderViews(v);
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ══════════════════════════════════════════════
+//  GLOBALS
+// ══════════════════════════════════════════════
+const TOTAL_VAGAS = 180;
+let chartMode     = 'hora';
+let recentReports = [];   // mantido em memória pelo listener
+let reportesHojeCount = 0;
+
+// ══════════════════════════════════════════════
+//  PAGE VIEW COUNTER  (Firestore: doc views/counters)
+// ══════════════════════════════════════════════
+async function trackPageView() {
+  const now    = new Date();
+  const dayKey = now.toISOString().slice(0,10);          // "2025-04-15"
+  const hrKey  = dayKey + 'H' + now.getHours();          // "2025-04-15H10"
+  const wkKey  = dayKey.slice(0,7) + 'W' +
+                 Math.min(3, Math.floor((now.getDate()-1)/7)); // "2025-04W1"
+  const moKey  = dayKey.slice(0,7);                       // "2025-04"
+
+  // Throttle: só conta 1x por hora por dispositivo (sessionStorage é local mas só dura a sessão)
+  const ssKey = 'pucpk_view_' + hrKey;
+  if (sessionStorage.getItem(ssKey)) return;
+  sessionStorage.setItem(ssKey, '1');
+
+  const ref = doc(db, 'views', 'counters');
+  await setDoc(ref, {
+    [hrKey]: increment(1),
+    [dayKey]: increment(1),
+    [wkKey]:  increment(1),
+    [moKey]:  increment(1),
+  }, { merge: true });
+
+  loadAndRenderViews();
 }
 
-function renderViews(v) {
-  document.getElementById('viewsHora').textContent   = v.hora;
-  document.getElementById('viewsDia').textContent    = v.dia;
-  document.getElementById('viewsSemana').textContent = v.semana;
-  document.getElementById('viewsMes').textContent    = v.mes;
+async function loadAndRenderViews() {
+  const now    = new Date();
+  const dayKey = now.toISOString().slice(0,10);
+  const hrKey  = dayKey + 'H' + now.getHours();
+  const wkKey  = dayKey.slice(0,7) + 'W' +
+                 Math.min(3, Math.floor((now.getDate()-1)/7));
+  const moKey  = dayKey.slice(0,7);
+
+  try {
+    const snap = await getDoc(doc(db, 'views', 'counters'));
+    const d    = snap.exists() ? snap.data() : {};
+    document.getElementById('viewsHora').textContent   = d[hrKey]  || 0;
+    document.getElementById('viewsDia').textContent    = d[dayKey] || 0;
+    document.getElementById('viewsSemana').textContent = d[wkKey]  || 0;
+    document.getElementById('viewsMes').textContent    = d[moKey]  || 0;
+  } catch(e) { console.warn('views load err', e); }
+}
+
+// ══════════════════════════════════════════════
+//  REPORTS — real-time listener (últimos 30 min)
+// ══════════════════════════════════════════════
+function startReportsListener() {
+  const cutoff = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
+  const q = query(
+    collection(db, 'reports'),
+    where('ts', '>=', cutoff),
+    orderBy('ts', 'desc')
+  );
+
+  onSnapshot(q, snap => {
+    recentReports = snap.docs.map(d => ({ id: d.id, ...d.data(), tsMs: d.data().ts.toMillis() }));
+
+    // Conta reportes de hoje para o card
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    reportesHojeCount = snap.docs.filter(d => d.data().ts.toMillis() >= startOfDay.getTime()).length;
+
+    applyStatus(computeStatus());
+    renderChart(chartMode);
+  }, err => {
+    console.warn('listener err', err);
+    applyStatus(fakeStatus());
+  });
 }
 
 // ══════════════════════════════════════════════
 //  STATUS LOGIC
 // ══════════════════════════════════════════════
-const TOTAL_VAGAS = 180;
-let currentState  = { status: 'livre', ocupacao: 0, fila: 0 };
-let chartMode     = 'hora';
-
 function computeStatus() {
-  const reports = loadReports();
-  const now     = Date.now();
-  // Only last 30min
-  const recent  = reports.filter(r => now - r.ts < 30 * 60 * 1000);
+  if (!recentReports.length) return fakeStatus();
 
-  if (!recent.length) return fakeStatus();
-
-  // Majority vote
   const counts = { livre: 0, quase: 0, cheio: 0 };
-  recent.forEach(r => counts[r.status]++);
+  recentReports.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
+
   let status = 'livre';
   if (counts.cheio >= counts.livre && counts.cheio >= counts.quase) status = 'cheio';
   else if (counts.quase >= counts.livre) status = 'quase';
 
-  const avgFila = recent.filter(r => r.status === 'cheio')
-    .reduce((s, r) => s + (r.fila || 0), 0) / Math.max(1, counts.cheio);
+  const cheioDocs = recentReports.filter(r => r.status === 'cheio');
+  const avgFila   = cheioDocs.length
+    ? cheioDocs.reduce((s, r) => s + (r.fila || 0), 0) / cheioDocs.length
+    : 0;
 
-  const ocupacao = status === 'cheio' ? 100 : status === 'quase' ? Math.floor(70 + Math.random()*20) : Math.floor(10 + Math.random()*50);
-  return { status, ocupacao, fila: Math.round(avgFila), reportes: recent.length };
+  const ocupacao = status === 'cheio' ? 100
+    : status === 'quase' ? Math.floor(70 + Math.random()*20)
+    : Math.floor(10 + Math.random()*50);
+
+  return { status, ocupacao, fila: Math.round(avgFila), reportes: recentReports.length };
 }
 
 function fakeStatus() {
-  // Deterministic fake based on time-of-day
   const h = new Date().getHours();
-  let ocupacao, status;
-  if (h < 7 || h > 22)      { ocupacao = 5;  status = 'livre'; }
-  else if (h < 9)            { ocupacao = 30; status = 'livre'; }
-  else if (h < 11)           { ocupacao = 85; status = 'quase'; }
-  else if (h < 14)           { ocupacao = 98; status = 'cheio'; }
-  else if (h < 16)           { ocupacao = 75; status = 'quase'; }
-  else if (h < 19)           { ocupacao = 55; status = 'livre'; }
-  else                       { ocupacao = 25; status = 'livre'; }
-  const jitter = (Math.random()-0.5)*10;
-  ocupacao = Math.min(100, Math.max(0, Math.round(ocupacao + jitter)));
-  if (ocupacao >= 95) status = 'cheio';
-  else if (ocupacao >= 70) status = 'quase';
-  else status = 'livre';
+  let ocupacao;
+  if      (h < 7 || h > 22) ocupacao = 5;
+  else if (h < 9)            ocupacao = 30;
+  else if (h < 11)           ocupacao = 85;
+  else if (h < 14)           ocupacao = 98;
+  else if (h < 16)           ocupacao = 75;
+  else if (h < 19)           ocupacao = 55;
+  else                       ocupacao = 25;
+  ocupacao = Math.min(100, Math.max(0, Math.round(ocupacao + (Math.random()-0.5)*10)));
+  const status = ocupacao >= 95 ? 'cheio' : ocupacao >= 70 ? 'quase' : 'livre';
   return { status, ocupacao, fila: status === 'cheio' ? Math.floor(5 + Math.random()*15) : 0, reportes: 0 };
 }
 
 function applyStatus(s) {
-  currentState = s;
   const pct    = s.ocupacao;
   const livres = Math.round(TOTAL_VAGAS * (1 - pct/100));
 
   // Ring
-  const circum = 2 * Math.PI * 80;
-  const offset = circum * (1 - pct/100);
+  const offset = 502 * (1 - pct/100);
   const ring   = document.getElementById('ringFill');
   ring.style.strokeDashoffset = offset;
-  ring.style.stroke = s.status === 'cheio' ? 'var(--vermelho)' : s.status === 'quase' ? 'var(--laranja)' : 'var(--verde)';
+  ring.style.stroke = s.status === 'cheio' ? 'var(--vermelho)'
+    : s.status === 'quase' ? 'var(--laranja)' : 'var(--verde)';
 
-  document.getElementById('pctDisplay').textContent = pct + '%';
-  document.getElementById('vagasLivres').textContent = livres;
-  document.getElementById('reportesHoje').textContent = (loadReports().length) || '—';
-  document.getElementById('picoHoje').textContent = pct;
+  document.getElementById('pctDisplay').textContent     = pct + '%';
+  document.getElementById('vagasLivres').textContent    = livres;
+  document.getElementById('reportesHoje').textContent   = reportesHojeCount || (recentReports.length || '—');
+  document.getElementById('picoHoje').textContent       = pct;
 
-  // Avg fila time (3 min per car est.)
-  const avg = Math.max(0, Math.round(s.fila * 3 + (Math.random()*4-2)));
-  document.getElementById('tempoMedio').textContent = avg || '< 1';
-  document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('pt-BR');
+  // ✅ 1 minuto por carro
+  const avg = Math.max(0, Math.round(s.fila * 1));
+  document.getElementById('tempoMedio').textContent  = avg || '< 1';
+  document.getElementById('lastUpdate').textContent  = new Date().toLocaleTimeString('pt-BR');
 
-  // Badge
   const badge = document.getElementById('statusBadge');
   const txt   = document.getElementById('statusText');
   const title = document.getElementById('heroTitle');
   badge.className = 'status-badge ' + s.status;
-  if (s.status === 'livre') { txt.textContent = 'VAGAS DISPONÍVEIS'; title.textContent = 'Tem vaga! Pode vir. ✅'; }
-  else if (s.status === 'quase') { txt.textContent = 'QUASE CHEIO'; title.textContent = 'Atenção — restam poucas vagas ⚠️'; }
-  else { txt.textContent = 'COMPLETAMENTE CHEIO'; title.textContent = 'Estacionamento lotado — há fila 🔴'; }
+  if (s.status === 'livre') {
+    txt.textContent   = 'VAGAS DISPONÍVEIS';
+    title.textContent = 'Tem vaga! Pode vir. ✅';
+  } else if (s.status === 'quase') {
+    txt.textContent   = 'QUASE CHEIO';
+    title.textContent = 'Atenção — restam poucas vagas ⚠️';
+  } else {
+    txt.textContent   = 'COMPLETAMENTE CHEIO';
+    title.textContent = 'Estacionamento lotado — há fila 🔴';
+  }
 
-  // Fila section
   const filaEl = document.getElementById('filaSection');
   if (s.status === 'cheio') {
     filaEl.classList.add('visible');
@@ -985,48 +1028,53 @@ function applyStatus(s) {
   }
 }
 
-function refreshData() {
-  const btn = document.getElementById('refreshBtn');
-  btn.classList.add('spinning');
-  setTimeout(() => {
-    btn.classList.remove('spinning');
-    applyStatus(computeStatus());
-    renderChart(chartMode);
-  }, 600);
-}
-
 // ══════════════════════════════════════════════
-//  CHART
+//  CHART (ocupação por hora, baseado em reportes reais do Firestore)
 // ══════════════════════════════════════════════
-function renderChart(mode) {
-  const v = loadViews();
+async function renderChart(mode) {
   const container = document.getElementById('chartBars');
-  const labels    = document.getElementById('chartLabels');
+  const labelsEl  = document.getElementById('chartLabels');
   container.innerHTML = '';
-  labels.innerHTML    = '';
+  labelsEl.innerHTML  = '';
 
   let data, labs;
+
   if (mode === 'hora') {
-    // Show last 12 hours
     const h = new Date().getHours();
-    labs = Array.from({length:12}, (_,i) => {
-      const hh = (h - 11 + i + 24) % 24;
-      return hh + 'h';
-    });
-    // Fake occupancy by hour
-    data = labs.map(l => {
-      const hh = parseInt(l);
-      return fakeHourOccupancy(hh);
-    });
+    labs = Array.from({length:12}, (_,i) => ((h - 11 + i + 24) % 24) + 'h');
+
+    // Tenta pegar dados reais do Firestore das últimas 12h
+    try {
+      const cutoff12 = Timestamp.fromMillis(Date.now() - 12 * 60 * 60 * 1000);
+      const snap = await getDocs(query(
+        collection(db, 'reports'),
+        where('ts', '>=', cutoff12),
+        orderBy('ts', 'asc')
+      ));
+      const byHr = {};
+      snap.docs.forEach(d => {
+        const hh = new Date(d.data().ts.toMillis()).getHours();
+        if (!byHr[hh]) byHr[hh] = { cheio:0, quase:0, livre:0, total:0 };
+        byHr[hh][d.data().status]++;
+        byHr[hh].total++;
+      });
+      data = labs.map(l => {
+        const hh = parseInt(l);
+        const b  = byHr[hh];
+        if (!b || !b.total) return fakeHourOccupancy(hh);
+        return Math.round((b.cheio * 100 + b.quase * 80 + b.livre * 30) / b.total);
+      });
+    } catch { data = labs.map(l => fakeHourOccupancy(parseInt(l))); }
+
   } else if (mode === 'dia') {
     labs = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    data = labs.map((_,i) => v.byDay[i] > 0 ? v.byDay[i] : Math.floor(20+Math.random()*80));
+    data = labs.map(() => Math.floor(20+Math.random()*80));
   } else {
     labs = ['Sem 1','Sem 2','Sem 3','Sem 4'];
-    data = v.byWeek.map((w,i) => w > 0 ? w : Math.floor(30+Math.random()*70));
+    data = labs.map(() => Math.floor(30+Math.random()*70));
   }
 
-  const max = Math.max(...data, 1);
+  const max  = Math.max(...data, 1);
   const curH = new Date().getHours();
 
   data.forEach((val, i) => {
@@ -1034,24 +1082,17 @@ function renderChart(mode) {
     wrap.className = 'bar-wrap';
     const bar = document.createElement('div');
     bar.className = 'bar';
-    const isHigh = mode === 'hora' && parseInt(labs[i]) === curH;
-    if (isHigh) bar.classList.add('highlight');
+    if (mode === 'hora' && parseInt(labs[i]) === curH) bar.classList.add('highlight');
     bar.style.height = '0px';
     wrap.appendChild(bar);
     container.appendChild(wrap);
 
     const lbl = document.createElement('div');
-    lbl.className = 'bar-label';
-    lbl.style.flex = '1';
-    lbl.style.textAlign = 'center';
-    lbl.style.fontSize = '9px';
-    lbl.style.color = 'rgba(245,245,240,0.25)';
+    lbl.style.cssText = 'flex:1;text-align:center;font-size:9px;color:rgba(245,245,240,0.25);font-family:"Space Mono",monospace;';
     lbl.textContent = labs[i];
-    labels.appendChild(lbl);
+    labelsEl.appendChild(lbl);
 
-    setTimeout(() => {
-      bar.style.height = (val / max * 90) + 'px';
-    }, 50 + i*30);
+    setTimeout(() => { bar.style.height = (val / max * 90) + 'px'; }, 50 + i*30);
   });
 }
 
@@ -1066,9 +1107,10 @@ function switchTab(el, mode) {
   chartMode = mode;
   renderChart(mode);
 }
+window.switchTab = switchTab;
 
 // ══════════════════════════════════════════════
-//  MODAL
+//  MODAL & REPORT SUBMIT
 // ══════════════════════════════════════════════
 function openModal() {
   document.getElementById('modalBg').classList.add('open');
@@ -1078,24 +1120,42 @@ function openModal() {
 }
 function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
 function updateRange() {
-  const v = document.getElementById('reportFila').value;
-  document.getElementById('rangeVal').textContent = v + ' carros';
-}
-function submitReport() {
-  const status = document.getElementById('reportStatus').value;
-  const fila   = parseInt(document.getElementById('reportFila').value) || 0;
-  const reports = loadReports();
-  reports.push({ status, fila, ts: Date.now() });
-  // Keep only last 200 reports
-  if (reports.length > 200) reports.splice(0, reports.length - 200);
-  saveReports(reports);
-  closeModal();
-  showToast('✅ Reporte enviado! Obrigado!');
-  applyStatus(computeStatus());
+  document.getElementById('rangeVal').textContent = document.getElementById('reportFila').value + ' carros';
 }
 
-function registrarCarona() {
-  showToast('🚗 Em breve! Cadastre-se na lista de espera.');
+async function submitReport() {
+  const status = document.getElementById('reportStatus').value;
+  const fila   = parseInt(document.getElementById('reportFila').value) || 0;
+
+  try {
+    await addDoc(collection(db, 'reports'), {
+      status,
+      fila,
+      ts: Timestamp.now()
+    });
+    closeModal();
+    showToast('✅ Reporte enviado! Obrigado!');
+    // listener onSnapshot vai atualizar automaticamente
+  } catch(e) {
+    console.error('submitReport err', e);
+    showToast('❌ Erro ao enviar. Verifique a conexão.');
+  }
+}
+
+function registrarCarona() { showToast('🚗 Em breve! Cadastre-se na lista de espera.'); }
+
+// ══════════════════════════════════════════════
+//  REFRESH BUTTON
+// ══════════════════════════════════════════════
+function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  loadAndRenderViews();
+  setTimeout(() => {
+    btn.classList.remove('spinning');
+    applyStatus(computeStatus());
+    renderChart(chartMode);
+  }, 700);
 }
 
 // ══════════════════════════════════════════════
@@ -1109,20 +1169,28 @@ function showToast(msg) {
 }
 
 // ══════════════════════════════════════════════
-//  AUTO-REFRESH every 2 min
+//  EXPOSE globals (chamados por onclick no HTML)
 // ══════════════════════════════════════════════
-function init() {
-  trackPageView();
-  applyStatus(computeStatus());
-  renderChart(chartMode);
-  setInterval(() => {
-    applyStatus(computeStatus());
-    renderChart(chartMode);
-    trackPageView(); // just re-render views
-  }, 2 * 60 * 1000);
-}
+window.openModal      = openModal;
+window.closeModal     = closeModal;
+window.updateRange    = updateRange;
+window.submitReport   = submitReport;
+window.registrarCarona = registrarCarona;
+window.refreshData    = refreshData;
 
-document.addEventListener('DOMContentLoaded', init);
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  applyStatus(fakeStatus());     // mostra algo enquanto carrega
+  trackPageView();
+  loadAndRenderViews();
+  startReportsListener();        // listener em tempo real
+  renderChart(chartMode);
+
+  // Re-renderiza views a cada 5 min
+  setInterval(loadAndRenderViews, 5 * 60 * 1000);
+});
 </script>
 
 </body>
