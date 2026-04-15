@@ -1056,22 +1056,18 @@ function startReportsListener() {
 function computeStatus() {
   if (!recentReports.length) return fakeStatus();
 
-  const counts = { livre: 0, quase: 0, cheio: 0 };
-  recentReports.forEach(r => counts[r.status] = (counts[r.status] || 0) + 1);
+  // Garante que currentOcupacao está inicializado
+  if (currentOcupacao === null) {
+    currentOcupacao = fakeStatus().ocupacao;
+  }
 
-  let status = 'livre';
-  if (counts.cheio >= counts.livre && counts.cheio >= counts.quase) status = 'cheio';
-  else if (counts.quase >= counts.livre) status = 'quase';
+  // ✅ Status derivado da ocupação — evita dessincronismo entre cor/legenda e percentual
+  const status = currentOcupacao >= 100 ? 'cheio' : currentOcupacao >= 70 ? 'quase' : 'livre';
 
   const cheioDocs = recentReports.filter(r => r.status === 'cheio');
   const avgFila   = cheioDocs.length
     ? cheioDocs.reduce((s, r) => s + (r.fila || 0), 0) / cheioDocs.length
     : 0;
-
-  // Usa ocupação ajustada pelos reportes; se ainda não há nenhum, mantém o placeholder do horário
-  if (currentOcupacao === null) {
-    currentOcupacao = fakeStatus().ocupacao;
-  }
 
   return { status, ocupacao: currentOcupacao, fila: Math.round(avgFila), reportes: recentReports.length };
 }
