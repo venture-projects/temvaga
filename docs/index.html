@@ -1062,10 +1062,9 @@ function computeStatus() {
     ? cheioDocs.reduce((s, r) => s + (r.fila || 0), 0) / cheioDocs.length
     : 0;
 
-  // Usa ocupação dinâmica se já foi inicializada, senão usa fake como base
+  // Usa ocupação ajustada pelos reportes; se ainda não há nenhum, mantém o placeholder do horário
   if (currentOcupacao === null) {
-    const fake = fakeStatus();
-    currentOcupacao = fake.ocupacao;
+    currentOcupacao = fakeStatus().ocupacao;
   }
 
   return { status, ocupacao: currentOcupacao, fila: Math.round(avgFila), reportes: recentReports.length };
@@ -1081,9 +1080,8 @@ function fakeStatus() {
   else if (h < 16)           ocupacao = 75;
   else if (h < 19)           ocupacao = 55;
   else                       ocupacao = 25;
-  ocupacao = Math.min(100, Math.max(0, Math.round(ocupacao + (Math.random()-0.5)*10)));
-  const status = ocupacao >= 95 ? 'cheio' : ocupacao >= 70 ? 'quase' : 'livre';
-  return { status, ocupacao, fila: status === 'cheio' ? Math.floor(5 + Math.random()*15) : 0, reportes: 0 };
+  const status = ocupacao >= 100 ? 'cheio' : ocupacao >= 70 ? 'quase' : 'livre';
+  return { status, ocupacao, fila: status === 'cheio' ? 8 : 0, reportes: 0 };
 }
 
 function applyStatus(s) {
@@ -1115,7 +1113,7 @@ function applyStatus(s) {
     txt.textContent   = 'VAGAS DISPONÍVEIS';
     title.textContent = 'Tem vaga! Pode vir. ✅';
   } else if (s.status === 'quase') {
-    txt.textContent   = 'QUASE CHEIO (~95%)';
+    txt.textContent   = 'QUASE CHEIO';
     title.textContent = 'Atenção — restam poucas vagas ⚠️';
   } else {
     txt.textContent   = 'COMPLETAMENTE CHEIO';
@@ -1258,7 +1256,7 @@ async function submitReport() {
     showToast('✅ Reporte enviado! Obrigado!');
 
     // Atualiza o status imediatamente com a nova ocupação
-    const newStatusLabel = currentOcupacao >= 95 ? 'cheio' : currentOcupacao >= 70 ? 'quase' : 'livre';
+    const newStatusLabel = currentOcupacao >= 100 ? 'cheio' : currentOcupacao >= 70 ? 'quase' : 'livre';
     applyStatus({ status: newStatusLabel, ocupacao: currentOcupacao, fila });
     renderChart(chartMode);
   } catch(e) {
@@ -1278,6 +1276,7 @@ function refreshData() {
   loadAndRenderViews();
   setTimeout(() => {
     btn.classList.remove('spinning');
+    // Usa computeStatus que preserva currentOcupacao já ajustado pelos reportes
     applyStatus(computeStatus());
     renderChart(chartMode);
   }, 700);
@@ -1309,12 +1308,14 @@ window.switchTab      = switchTabInternal;
 //  INIT
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  const initial = fakeStatus();
-  currentOcupacao = initial.ocupacao;    // inicializa ocupação dinâmica
-  applyStatus(initial);     // mostra algo enquanto carrega
+  // Mostra estimativa por horário enquanto o Firestore carrega.
+  // currentOcupacao permanece null até o listener confirmar — assim
+  // o refresh nunca reseta o valor ajustado pelos reportes.
+  const placeholder = fakeStatus();
+  applyStatus(placeholder);
   trackPageView();
   loadAndRenderViews();
-  startReportsListener();        // listener em tempo real
+  startReportsListener();        // listener em tempo real (sobrescreve o placeholder)
   renderChart(chartMode);
 
   // Re-renderiza views a cada 5 min
