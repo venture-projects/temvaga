@@ -234,7 +234,7 @@
   /* ── CARDS GRID ── */
   .cards {
     display: grid;
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(4, 1fr);
     gap: 12px;
     margin-bottom: 40px;
   }
@@ -753,22 +753,10 @@
   <!-- CARDS -->
   <div class="cards">
     <div class="card">
-      <div class="card-icon">📊</div>
-      <div class="card-label">Reportes Hoje</div>
-      <div class="card-value" id="reportesHoje">—</div>
-      <div class="card-unit">da comunidade</div>
-    </div>
-    <div class="card">
-      <div class="card-icon">🔥</div>
-      <div class="card-label">Pico Hoje</div>
-      <div class="card-value" id="picoHoje">—</div>
-      <div class="card-unit">% ocupação</div>
-    </div>
-    <div class="card">
-      <div class="card-icon">⏱️</div>
-      <div class="card-label">Tempo de Fila Esperado</div>
-      <div class="card-value" id="tempoEsperado">—</div>
-      <div class="card-unit">minutos (se cheio)</div>
+      <div class="card-icon">🕐</div>
+      <div class="card-label">Último Report</div>
+      <div class="card-value" id="ultimoReport">—</div>
+      <div class="card-unit">horário</div>
     </div>
     <div class="card">
       <div class="card-icon">🚗</div>
@@ -777,16 +765,34 @@
       <div class="card-unit">carros (se cheio)</div>
     </div>
     <div class="card">
-      <div class="card-icon">📈</div>
-      <div class="card-label">Tempo Médio de Fila Hoje</div>
-      <div class="card-value" id="tempoMedioHoje">—</div>
-      <div class="card-unit">minutos (média do dia)</div>
+      <div class="card-icon">⏱️</div>
+      <div class="card-label">Tempo de Fila Esperado</div>
+      <div class="card-value" id="tempoEsperado">—</div>
+      <div class="card-unit">minutos (se cheio)</div>
     </div>
     <div class="card">
       <div class="card-icon">🅿️</div>
       <div class="card-label">Média de Utilização Hoje</div>
       <div class="card-value" id="mediaUtilizacaoHoje">—</div>
       <div class="card-unit">% média do dia</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📈</div>
+      <div class="card-label">Tempo Médio de Fila Hoje</div>
+      <div class="card-value" id="tempoMedioHoje">—</div>
+      <div class="card-unit">minutos (média do dia)</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔥</div>
+      <div class="card-label">Pico Hoje</div>
+      <div class="card-value" id="picoHoje">—</div>
+      <div class="card-unit">% ocupação</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-label">Reportes Hoje</div>
+      <div class="card-value" id="reportesHoje">—</div>
+      <div class="card-unit">da comunidade</div>
     </div>
   </div>
 
@@ -1044,6 +1050,10 @@ async function loadDayStats() {
     } else {
       document.getElementById('tempoMedioHoje').textContent = '0';
     }
+
+    // ✅ Total de reportes do dia — calculado aqui pois loadDayStats busca desde meia-noite
+    reportesHojeCount = docs.length;
+    document.getElementById('reportesHoje').textContent = reportesHojeCount || '—';
   } catch(e) { console.warn('loadDayStats err', e); }
 }
 
@@ -1078,10 +1088,6 @@ function startReportsListener() {
 
   onSnapshot(q, snap => {
     recentReports = snap.docs.map(d => ({ id: d.id, ...d.data(), tsMs: d.data().ts.toMillis() }));
-
-    // Conta reportes de hoje para o card
-    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
-    reportesHojeCount = snap.docs.filter(d => d.data().ts.toMillis() >= startOfDay.getTime()).length;
 
     // ✅ Restaura ocupação do banco: usa o campo salvo no reporte mais recente
     if (recentReports.length > 0 && recentReports[0].ocupacao != null) {
@@ -1148,6 +1154,14 @@ function applyStatus(s) {
 
   document.getElementById('pctDisplay').textContent     = pct + '%';
   document.getElementById('reportesHoje').textContent   = reportesHojeCount || (recentReports.length || '—');
+
+  // Último report: HH:MM do reporte mais recente
+  if (recentReports.length > 0) {
+    const tsMs = recentReports[0].tsMs;
+    const d = new Date(tsMs);
+    document.getElementById('ultimoReport').textContent =
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
 
   // Pico hoje: maior ocupação registrada no dia (atualizado via loadDayStats)
   // (não sobrescrevemos aqui — é atualizado por loadDayStats)
