@@ -215,7 +215,8 @@
     0%,100% { opacity:1; transform:scale(1); }
     50% { opacity:0.5; transform:scale(1.3); }
   }
-  .status-badge.livre { background: rgba(0,193,124,0.15); color: var(--verde); border: 1px solid rgba(0,193,124,0.3); }
+  .status-badge.fechado { background: rgba(120,120,120,0.15); color: #888; border: 1px solid rgba(120,120,120,0.3); }
+  .status-badge.fechado .status-dot { background: #888; }
   .status-badge.livre .status-dot { background: var(--verde); }
   .status-badge.cheio { background: rgba(255,59,59,0.15); color: var(--vermelho); border: 1px solid rgba(255,59,59,0.3); }
   .status-badge.cheio .status-dot { background: var(--vermelho); }
@@ -629,7 +630,189 @@
   }
   .btn-carona:hover { opacity: 0.8; }
 
-  /* ── AD SLOT ── */
+  /* ── CARONA FORM ── */
+  .carona-form-wrap {
+    margin-top: 28px;
+    text-align: left;
+  }
+  .carona-form-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: rgba(245,245,240,0.4);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+  .carona-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .carona-field { display: flex; flex-direction: column; gap: 5px; }
+  .carona-field-full { margin-bottom: 12px; }
+  .carona-field label {
+    font-size: 12px;
+    color: rgba(245,245,240,0.45);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .carona-field input, .carona-field select {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: var(--branco);
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .carona-field input::placeholder { color: rgba(245,245,240,0.2); }
+  .carona-field input:focus, .carona-field select:focus { border-color: var(--ouro); }
+  .carona-field select option { background: #1C1C1C; color: var(--branco); }
+  .carona-field select optgroup { background: #1C1C1C; color: rgba(245,245,240,0.4); }
+  .carona-hint {
+    font-size: 12px;
+    color: rgba(245,245,240,0.35);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .carona-cal-outer {
+    overflow-x: auto;
+    margin-bottom: 24px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .carona-cal-wrap {
+    min-width: 520px;
+  }
+  .carona-cal-head {
+    display: grid;
+    grid-template-columns: 80px repeat(5,1fr);
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .carona-cal-head div {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.08em;
+    color: rgba(245,245,240,0.35);
+    padding: 8px 0;
+    text-align: center;
+  }
+  .carona-cal-row {
+    display: grid;
+    grid-template-columns: 80px repeat(5,1fr);
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .carona-cal-label {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.06em;
+    color: rgba(245,245,240,0.35);
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .carona-cal-cell {
+    padding: 4px;
+    border-left: 1px solid rgba(255,255,255,0.05);
+  }
+  .carona-cal-cell select {
+    width: 100%;
+    font-size: 10px;
+    padding: 5px 2px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    color: rgba(245,245,240,0.4);
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    outline: none;
+    text-align: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .carona-cal-cell select option { background: #1C1C1C; color: var(--branco); }
+  .carona-cal-cell select.cfilled {
+    background: rgba(255,209,0,0.12);
+    color: var(--ouro);
+    border-color: rgba(255,209,0,0.3);
+  }
+  .carona-disclaimer {
+    border: 1px solid rgba(255,209,0,0.2);
+    border-radius: 10px;
+    background: rgba(255,209,0,0.05);
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .carona-disclaimer-title {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.08em;
+    color: rgba(255,209,0,0.7);
+    margin-bottom: 8px;
+  }
+  .carona-disclaimer p {
+    font-size: 12px;
+    color: rgba(245,245,240,0.4);
+    line-height: 1.6;
+  }
+  .carona-disclaimer p+p { margin-top: 8px; }
+  .carona-check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .carona-check-row input[type=checkbox] { margin-top: 2px; flex-shrink: 0; accent-color: var(--ouro); }
+  .carona-check-row label {
+    font-size: 12px;
+    color: rgba(245,245,240,0.45);
+    line-height: 1.5;
+    cursor: pointer;
+  }
+  .btn-carona-submit {
+    width: 100%;
+    background: var(--ouro);
+    color: var(--preto);
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-carona-submit:hover { opacity: 0.85; }
+  .btn-carona-submit:disabled { opacity: 0.3; cursor: not-allowed; }
+  .carona-success {
+    display: none;
+    text-align: center;
+    padding: 24px;
+    border: 1px solid rgba(0,193,124,0.3);
+    border-radius: 10px;
+    background: rgba(0,193,124,0.08);
+    color: var(--verde);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  @media (max-width: 500px) {
+    .carona-fields { grid-template-columns: 1fr; }
+    .carona-cal-head, .carona-cal-row { grid-template-columns: 60px repeat(5,1fr); }
+    .carona-cal-cell select { font-size: 9px; }
+  }
+
+
   .ad-slot {
     border: 1px dashed rgba(255,255,255,0.12);
     border-radius: 10px;
@@ -872,12 +1055,97 @@
 
   <!-- CARONA SECTION -->
   <div class="carona-section" id="caronaSection">
-    <div class="carona-badge">EM BREVE</div>
     <div class="carona-title">Grupos de Carona 🚗</div>
     <div class="carona-desc">
-      Conecte-se com colegas que fazem o mesmo trajeto. Divida combustível, reduza emissões e chegue mais tranquilo à PUC-Rio.
+      Conecte-se com colegas que fazem o mesmo trajeto. Divida combustível, reduza emissões e chegue mais tranquilo à PUC-Rio.<br>
+      Após validação da matrícula, você receberá por e-mail os links dos grupos de WhatsApp compatíveis com seu bairro e horário.
     </div>
-    <button class="btn-carona" onclick="registrarCarona()">QUERO PARTICIPAR</button>
+
+    <div class="carona-form-wrap">
+
+      <div class="carona-form-section-title">Dados pessoais</div>
+      <div class="carona-fields">
+        <div class="carona-field"><label>Nome completo</label><input type="text" id="cNome" placeholder="Como aparece na matrícula"></div>
+        <div class="carona-field"><label>Matrícula</label><input type="text" id="cMat" placeholder="Ex: 2210123"></div>
+        <div class="carona-field"><label>E-mail institucional</label><input type="email" id="cEmail" placeholder="nome@aluno.puc-rio.br"></div>
+        <div class="carona-field"><label>Celular (WhatsApp)</label><input type="tel" id="cTel" placeholder="(21) 99999-9999"></div>
+      </div>
+
+      <div class="carona-field carona-field-full">
+        <label>Bairro / região de origem</label>
+        <select id="cBairro">
+          <option value="">Selecione...</option>
+          <optgroup label="Zona Sul">
+            <option>Botafogo</option><option>Catete / Glória</option><option>Flamengo / Laranjeiras</option>
+            <option>Humaitá</option><option>Ipanema / Leblon</option><option>Copacabana</option>
+            <option>Leme</option><option>Santa Teresa</option><option>Urca</option>
+          </optgroup>
+          <optgroup label="Zona Norte">
+            <option>Méier e arredores</option><option>Tijuca / Vila Isabel</option>
+            <option>Maracanã / São Cristóvão</option><option>Ramos / Penha</option>
+            <option>Ilha do Governador</option>
+          </optgroup>
+          <optgroup label="Zona Oeste">
+            <option>Barra da Tijuca</option><option>Recreio / Vargens</option>
+            <option>Jacarepaguá</option><option>Bangu / Campo Grande</option><option>Santa Cruz</option>
+          </optgroup>
+          <optgroup label="Centro e arredores">
+            <option>Centro / Lapa</option><option>Estácio / Rio Comprido</option>
+            <option>Madureira / Cascadura</option>
+          </optgroup>
+          <optgroup label="Outros municípios">
+            <option>Niterói / São Gonçalo</option><option>Nova Iguaçu / Baixada</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="carona-form-section-title" style="margin-top:24px;">Horários por dia da semana</div>
+      <p class="carona-hint">Selecione o turno de chegada e/ou saída para cada dia que você frequenta a PUC. Deixe em branco os dias que não vem.</p>
+
+      <div class="carona-cal-outer"><div class="carona-cal-wrap">
+        <div class="carona-cal-head">
+          <div></div>
+          <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div>
+        </div>
+        <div class="carona-cal-row">
+          <div class="carona-cal-label">Chegada</div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+        </div>
+        <div class="carona-cal-row">
+          <div class="carona-cal-label">Saída</div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+        </div>
+      </div>
+
+      <div class="carona-disclaimer">
+        <div class="carona-disclaimer-title">⚠ Aviso importante</div>
+        <p>Esta plataforma foi desenvolvida de forma independente por uma equipe da PUC-Rio, sem qualquer vínculo formal com a Pontifícia Universidade Católica do Rio de Janeiro ou com o serviço de estacionamento do campus. A PUC-Rio não tem qualquer responsabilidade sobre este serviço, seu conteúdo ou seu funcionamento.</p>
+        <p>A plataforma funciona exclusivamente como um quadro de avisos digital para aproximar alunos com perfis de deslocamento compatíveis. A organização das caronas, combinação de horários, rotas e eventuais custos é de responsabilidade exclusiva dos participantes. Os responsáveis por esta plataforma não intermediam, garantem nem se responsabilizam pelas caronas realizadas nem por quaisquer ocorrências durante os trajetos.</p>
+      </div>
+
+      <div class="carona-check-row">
+        <input type="checkbox" id="cAceite">
+        <label for="cAceite">Li e compreendi o aviso acima. Estou ciente de que esta plataforma não tem vínculo com a PUC-Rio e que a organização das caronas é de minha exclusiva responsabilidade.</label>
+      </div>
+
+      <div id="cFormArea">
+        <button class="btn-carona-submit" id="cSubmitBtn" disabled>ENVIAR CADASTRO →</button>
+        <p class="carona-hint" style="text-align:center;margin-top:12px;">Cadastro válido para o semestre 2026.1. Após validação da matrícula você receberá os links dos grupos de WhatsApp por e-mail.</p>
+      </div>
+      <div class="carona-success" id="cSuccess">
+        <div style="font-size:22px;margin-bottom:10px;">✓</div>
+        <p><strong>Cadastro recebido!</strong><br>Sua matrícula será verificada em breve.<br>Você receberá os links dos grupos de WhatsApp no e-mail informado.</p>
+      </div>
+
+    </div>
   </div>
 
   <!-- AD SLOT BOTTOM -->
@@ -894,7 +1162,7 @@
 </button>
 
 <footer>
-  <p>PUC PARKING · feito pela comunidade · não oficial &nbsp;|&nbsp; <a href="#">reportar erro</a> &nbsp;|&nbsp; <a href="#">anuncie aqui</a></p>
+  <p>PUC PARKING · feito pela comunidade · não oficial &nbsp;|&nbsp; <a href="mailto:temvagapucrio@gmail.com">temvagapucrio@gmail.com</a></p>
 </footer>
 
 <!-- TOAST -->
@@ -956,8 +1224,45 @@ function submitReport() {
 function refreshData() {
   if (window._refreshDataModule) window._refreshDataModule();
 }
-function registrarCarona() {
-  if (window._showToast) window._showToast('🚗 Em breve! Cadastre-se na lista de espera.');
+function cMarkFilled(sel){ sel.classList.toggle('cfilled', sel.value !== ''); }
+function cToggleBtn(){
+  const checkbox = document.getElementById('cAceite');
+  const btn = document.getElementById('cSubmitBtn');
+  if (checkbox && btn) btn.disabled = !checkbox.checked;
+}
+async function cHandleSubmit(){
+  const nome   = document.getElementById('cNome').value.trim();
+  const mat    = document.getElementById('cMat').value.trim();
+  const email  = document.getElementById('cEmail').value.trim();
+  const tel    = document.getElementById('cTel').value.trim();
+  const bairro = document.getElementById('cBairro').value;
+  const turnos = {};
+  const dias   = ['seg','ter','qua','qui','sex'];
+  const tipos  = ['chegada','saida'];
+  document.querySelectorAll('.cturn').forEach((sel, i) => {
+    const dia  = dias[i % 5];
+    const tipo = tipos[Math.floor(i / 5)];
+    if(sel.value) turnos[dia + '_' + tipo] = sel.value;
+  });
+  const hasTurno = Object.keys(turnos).length > 0;
+  if(!nome||!mat||!email||!tel||!bairro){ alert('Por favor preencha todos os dados pessoais.'); return; }
+  if(!email.endsWith('@aluno.puc-rio.br')){ alert('Use seu e-mail institucional @aluno.puc-rio.br.'); return; }
+  const btn = document.getElementById('cSubmitBtn');
+  btn.textContent = 'ENVIANDO…';
+  btn.disabled = true;
+  try {
+    if (typeof window._firestoreAddCarona !== 'function') throw new Error('Firebase não carregado');
+    await window._firestoreAddCarona({ nome, matricula: mat, email, celular: tel, bairro, turnos, status: 'pendente', semestre: '2026.1', criadoEm: new Date().toISOString() });
+    document.getElementById('cFormArea').style.display = 'none';
+    document.getElementById('cSuccess').style.display = 'block';
+  } catch(e) {
+    console.error(e);
+    alert('Erro ao enviar. Verifique sua conexão e tente novamente.');
+    btn.textContent = 'ENVIAR CADASTRO →';
+    btn.disabled = false;
+  }
+}
+
 }
 </script>
 
@@ -1114,6 +1419,7 @@ function startReportsListener() {
 // currentOcupacao já declarado acima nos GLOBALS
 
 function computeStatus() {
+  if (isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
   if (!recentReports.length) return fakeStatus();
 
   // Garante que currentOcupacao está inicializado
@@ -1136,7 +1442,35 @@ function computeStatus() {
   return { status, ocupacao: currentOcupacao, fila: Math.round(avgFila), reportes: recentReports.length };
 }
 
+// ══════════════════════════════════════════════
+//  HORÁRIO DE FUNCIONAMENTO
+//  Seg–Sex: 05h–01h (fecha 01h–05h)
+//  Fim de semana: fecha Sáb 01h → Seg 05h
+// ══════════════════════════════════════════════
+function isEstacionamentoClosed() {
+  const now = new Date();
+  const dow = now.getDay(); // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
+  const h   = now.getHours();
+  // Sáb após 01h, dia todo de Dom, Seg antes das 05h
+  if (dow === 6 && h >= 1) return true;
+  if (dow === 0) return true;
+  if (dow === 1 && h < 5) return true;
+  // Seg–Sex: fecha 01h–05h
+  if (h >= 1 && h < 5) return true;
+  return false;
+}
+
+function getAbreText() {
+  const now = new Date();
+  const dow = now.getDay();
+  if (dow === 6 || dow === 0 || (dow === 1 && now.getHours() < 5)) {
+    return 'Abre segunda-feira às 5h';
+  }
+  return 'Abre às 5h';
+}
+
 function fakeStatus() {
+  if (isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
   const h = new Date().getHours();
   let ocupacao;
   if      (h < 7 || h > 22) ocupacao = 5;
@@ -1194,6 +1528,30 @@ function applyStatus(s) {
   const txt   = document.getElementById('statusText');
   const title = document.getElementById('heroTitle');
   badge.className = 'status-badge ' + s.status;
+
+  // Botão de report: desabilita quando fechado (formulário de carona não é afetado)
+  const btnReport      = document.querySelector('.btn-report');
+  const btnReportFloat = document.querySelector('.btn-report-float');
+  const isClosed = s.status === 'fechado';
+  if (btnReport) {
+    btnReport.disabled           = isClosed;
+    btnReport.style.opacity      = isClosed ? '0.35' : '1';
+    btnReport.style.cursor       = isClosed ? 'not-allowed' : 'pointer';
+    btnReport.style.pointerEvents = isClosed ? 'none' : '';
+  }
+  if (btnReportFloat) {
+    btnReportFloat.style.display = isClosed ? 'none' : '';
+  }
+
+  if (s.status === 'fechado') {
+    ring.style.stroke = '#444';
+    document.getElementById('pctDisplay').textContent = '—';
+    txt.textContent   = 'FECHADO';
+    title.textContent = 'Estacionamento fechado 🔒';
+    document.getElementById('filaSection')?.classList.remove('visible');
+    return;
+  }
+
   if (s.status === 'livre') {
     txt.textContent   = 'VAGAS DISPONÍVEIS';
     title.textContent = 'Tem vaga! Pode vir. ✅';
@@ -1389,8 +1747,32 @@ function showToast(msg) {
 }
 
 // ══════════════════════════════════════════════
-//  EXPOSE via window (chamados por onclick no HTML)
+//  CARONA — FIRESTORE
 // ══════════════════════════════════════════════
+async function firestoreAddCarona(data) {
+  await addDoc(collection(db, 'cadastros_carona'), data);
+}
+
+async function firestoreGetCaronas(status) {
+  let q;
+  if (status === 'todos') {
+    q = query(collection(db, 'cadastros_carona'), orderBy('criadoEm', 'desc'));
+  } else {
+    q = query(collection(db, 'cadastros_carona'), where('status','==',status), orderBy('criadoEm','desc'));
+  }
+  const snap = await getDocs(q);
+  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+}
+
+async function firestoreUpdateCarona(id, status) {
+  await setDoc(doc(db, 'cadastros_carona', id), { status }, { merge: true });
+}
+
+window._firestoreAddCarona    = firestoreAddCarona;
+window._firestoreGetCaronas   = firestoreGetCaronas;
+window._firestoreUpdateCarona = firestoreUpdateCarona;
+
+
 window._submitReportModule = submitReport;
 window._refreshDataModule  = refreshData;
 window._switchTabModule    = switchTabInternal;
@@ -1419,6 +1801,196 @@ document.addEventListener('DOMContentLoaded', () => {
   setInterval(loadAndRenderViews, 5 * 60 * 1000);
   setInterval(loadDayStats, 5 * 60 * 1000);
 });
+</script>
+
+<!-- ADMIN PAGE (oculta — acessível via #admin) -->
+<div id="adminOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0A0A0A;overflow-y:auto;">
+
+  <!-- LOGIN -->
+  <div id="adminLogin" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;">
+    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.3);margin-bottom:8px;">PUC PARKING · ADMIN</div>
+    <input id="adminUser" type="text" placeholder="usuário" style="width:260px;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#F5F5F0;font-family:'Syne',sans-serif;font-size:14px;outline:none;">
+    <input id="adminPass" type="password" placeholder="senha" style="width:260px;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#F5F5F0;font-family:'Syne',sans-serif;font-size:14px;outline:none;" onkeydown="if(event.key==='Enter')adminLogin()">
+    <button onclick="adminLogin()" style="width:260px;padding:10px;background:#FFD100;color:#0A0A0A;border:none;border-radius:8px;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.08em;cursor:pointer;">ENTRAR</button>
+    <div id="adminLoginErr" style="font-size:12px;color:#FF3B3B;display:none;">Usuário ou senha incorretos.</div>
+    <button onclick="closeAdmin()" style="margin-top:8px;background:none;border:none;color:rgba(255,255,255,.25);font-size:12px;cursor:pointer;font-family:'Space Mono',monospace;">✕ fechar</button>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="adminPanel" style="display:none;max-width:900px;margin:0 auto;padding:40px 20px 80px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.3);">PUC PARKING · ADMIN</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#F5F5F0;margin-top:4px;">Cadastros de Carona</div>
+      </div>
+      <button onclick="closeAdmin()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);padding:8px 16px;border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;">✕ SAIR</button>
+    </div>
+
+    <!-- FILTROS -->
+    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+      <button class="admin-filter-btn active" onclick="adminSetFilter('pendente',this)">PENDENTES</button>
+      <button class="admin-filter-btn" onclick="adminSetFilter('aprovado',this)">APROVADOS</button>
+      <button class="admin-filter-btn" onclick="adminSetFilter('rejeitado',this)">REJEITADOS</button>
+      <button class="admin-filter-btn" onclick="adminSetFilter('todos',this)">TODOS</button>
+    </div>
+
+    <div id="adminCount" style="font-size:12px;color:rgba(255,255,255,.3);font-family:'Space Mono',monospace;margin-bottom:16px;"></div>
+    <div id="adminList"></div>
+  </div>
+</div>
+
+<style>
+  .admin-filter-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.4);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .08em;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .admin-filter-btn.active { background: rgba(255,209,0,.15); border-color: rgba(255,209,0,.4); color: #FFD100; }
+  .admin-card {
+    background: #1E1E1E;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+  }
+  .admin-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .admin-card-name { font-size:15px; font-weight:700; color:#F5F5F0; }
+  .admin-card-mat { font-size:11px; color:rgba(255,255,255,.35); font-family:'Space Mono',monospace; margin-top:2px; }
+  .admin-card-info { font-size:12px; color:rgba(255,255,255,.45); line-height:1.8; margin-bottom:12px; }
+  .admin-card-turnos { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .admin-turno-tag { font-size:10px; font-family:'Space Mono',monospace; padding:3px 8px; border-radius:4px; background:rgba(255,255,255,.07); color:rgba(255,255,255,.4); }
+  .admin-card-actions { display:flex; gap:8px; }
+  .btn-aprovar { background: rgba(0,193,124,.15); border: 1px solid rgba(0,193,124,.3); color: #00C17C; padding:7px 16px; border-radius:7px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.06em; transition:opacity .15s; }
+  .btn-aprovar:hover { opacity:.8; }
+  .btn-rejeitar { background: rgba(255,59,59,.1); border: 1px solid rgba(255,59,59,.25); color: #FF3B3B; padding:7px 16px; border-radius:7px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.06em; transition:opacity .15s; }
+  .btn-rejeitar:hover { opacity:.8; }
+  .status-pill { font-size:10px; font-family:'Space Mono',monospace; padding:3px 10px; border-radius:20px; font-weight:700; letter-spacing:.06em; }
+  .status-pill.pendente { background:rgba(255,209,0,.12); color:#FFD100; }
+  .status-pill.aprovado { background:rgba(0,193,124,.12); color:#00C17C; }
+  .status-pill.rejeitado { background:rgba(255,59,59,.12); color:#FF3B3B; }
+</style>
+
+<script>
+// Carona form listeners — fora do módulo Firebase para garantir disponibilidade imediata
+document.addEventListener('DOMContentLoaded', () => {
+  const aceite = document.getElementById('cAceite');
+  const submitBtn = document.getElementById('cSubmitBtn');
+  if (aceite)     aceite.addEventListener('change', cToggleBtn);
+  if (submitBtn)  submitBtn.addEventListener('click', cHandleSubmit);
+});
+
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'venture1305!';
+let adminFilterStatus = 'pendente';
+let adminAuthed = false;
+
+function checkAdminHash() {
+  if (window.location.hash === '#admin') {
+    document.getElementById('adminOverlay').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+}
+window.addEventListener('hashchange', checkAdminHash);
+window.addEventListener('load', checkAdminHash);
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  history.replaceState(null, '', window.location.pathname);
+  adminAuthed = false;
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminLogin').style.display = 'flex';
+  document.getElementById('adminUser').value = '';
+  document.getElementById('adminPass').value = '';
+}
+
+function adminLogin() {
+  const u = document.getElementById('adminUser').value.trim();
+  const p = document.getElementById('adminPass').value;
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    adminAuthed = true;
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    document.body.style.overflow = 'auto';
+    adminLoadCadastros();
+  } else {
+    document.getElementById('adminLoginErr').style.display = 'block';
+  }
+}
+
+function adminSetFilter(status, btn) {
+  adminFilterStatus = status;
+  document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  adminLoadCadastros();
+}
+
+async function adminLoadCadastros() {
+  const list = document.getElementById('adminList');
+  const countEl = document.getElementById('adminCount');
+  list.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;font-family:Space Mono,monospace;">Carregando…</div>';
+  try {
+    const docs = await window._firestoreGetCaronas(adminFilterStatus);
+    countEl.textContent = docs.length + ' cadastro(s)';
+    if (!docs.length) { list.innerHTML = '<div style="color:rgba(255,255,255,.25);font-size:13px;font-family:Space Mono,monospace;padding:20px 0;">Nenhum cadastro encontrado.</div>'; return; }
+    list.innerHTML = docs.map(d => adminCardHTML(d)).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:#FF3B3B;font-size:13px;">Erro ao carregar cadastros.</div>';
+  }
+}
+
+function adminCardHTML(d) {
+  const t = d.turnos || {};
+  const dias = ['seg','ter','qua','qui','sex'];
+  const nomeDia = {seg:'Seg',ter:'Ter',qua:'Qua',qui:'Qui',sex:'Sex'};
+  const tags = dias.flatMap(dia => {
+    const arr = [];
+    if(t[dia+'_chegada']) arr.push(`${nomeDia[dia]} chegada ${t[dia+'_chegada']}`);
+    if(t[dia+'_saida'])   arr.push(`${nomeDia[dia]} saída ${t[dia+'_saida']}`);
+    return arr;
+  }).map(tag => `<span class="admin-turno-tag">${tag}</span>`).join('');
+
+  const actions = d.status === 'pendente'
+    ? `<button class="btn-aprovar" onclick="adminAprovar('${d.id}')">✓ APROVAR</button>
+       <button class="btn-rejeitar" onclick="adminRejeitar('${d.id}')">✕ REJEITAR</button>`
+    : d.status === 'aprovado'
+    ? `<button class="btn-rejeitar" onclick="adminRejeitar('${d.id}')">✕ REJEITAR</button>`
+    : `<button class="btn-aprovar" onclick="adminAprovar('${d.id}')">✓ REATIVAR</button>`;
+
+  return `<div class="admin-card" id="acard-${d.id}">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-name">${d.nome}</div>
+        <div class="admin-card-mat">Mat. ${d.matricula} · ${d.semestre || '2026.1'}</div>
+      </div>
+      <span class="status-pill ${d.status}">${d.status.toUpperCase()}</span>
+    </div>
+    <div class="admin-card-info">
+      📍 ${d.bairro}<br>
+      📧 ${d.email}<br>
+      📱 ${d.celular}<br>
+      🕐 Cadastro: ${d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '—'}
+    </div>
+    <div class="admin-card-turnos">${tags || '<span class="admin-turno-tag">sem turnos</span>'}</div>
+    <div class="admin-card-actions">${actions}</div>
+  </div>`;
+}
+
+async function adminAprovar(id) {
+  await window._firestoreUpdateCarona(id, 'aprovado');
+  adminLoadCadastros();
+}
+async function adminRejeitar(id) {
+  await window._firestoreUpdateCarona(id, 'rejeitado');
+  adminLoadCadastros();
+}
 </script>
 
 </body>
