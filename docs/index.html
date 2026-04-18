@@ -1263,7 +1263,12 @@ async function cHandleSubmit(){
   }
 }
 
-}
+document.addEventListener('DOMContentLoaded', () => {
+  const aceite    = document.getElementById('cAceite');
+  const submitBtn = document.getElementById('cSubmitBtn');
+  if (aceite)     aceite.addEventListener('change', cToggleBtn);
+  if (submitBtn)  submitBtn.addEventListener('click', cHandleSubmit);
+});
 </script>
 
 <!-- Firebase SDK -->
@@ -1878,14 +1883,6 @@ document.addEventListener('DOMContentLoaded', () => {
 </style>
 
 <script>
-// Carona form listeners — fora do módulo Firebase para garantir disponibilidade imediata
-document.addEventListener('DOMContentLoaded', () => {
-  const aceite = document.getElementById('cAceite');
-  const submitBtn = document.getElementById('cSubmitBtn');
-  if (aceite)     aceite.addEventListener('change', cToggleBtn);
-  if (submitBtn)  submitBtn.addEventListener('click', cHandleSubmit);
-});
-
 const ADMIN_USER = 'admin';
 const ADMIN_PASS = 'venture1305!';
 let adminFilterStatus = 'pendente';
