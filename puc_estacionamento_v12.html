@@ -181,16 +181,16 @@
     justify-content: center;
   }
   .ring-pct {
-    font-family: 'Space Mono', monospace;
-    font-size: 34px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
     font-weight: 700;
-    line-height: 1;
+    line-height: 1.2;
+    text-align: center;
+    letter-spacing: 0.04em;
+    padding: 0 12px;
   }
   .ring-sub {
-    font-size: 10px;
-    letter-spacing: 0.15em;
-    color: rgba(245,245,240,0.45);
-    margin-top: 4px;
+    display: none;
   }
 
   .status-badge {
@@ -1534,7 +1534,26 @@ function applyStatus(s) {
     : s.status === 'quase1' ? 'var(--laranja1)'
     : 'var(--verde)';
 
-  document.getElementById('pctDisplay').textContent     = pct + '%';
+  // Ring label: texto da faixa em vez do percentual
+  const labelTexts = {
+    fechado: '—',
+    livre:   'Baixa',
+    quase1:  'Moderada',
+    quase2:  'Alta',
+    quase3:  'Quase\nCheia',
+    cheio:   'Lotado'
+  };
+  const ringLabel = document.getElementById('pctDisplay');
+  ringLabel.style.whiteSpace = 'pre-line';
+  ringLabel.textContent = labelTexts[s.status] ?? '—';
+  // Cor do texto acompanha a cor do anel
+  ringLabel.style.color = s.status === 'cheio'  ? 'var(--vermelho)'
+    : s.status === 'quase3' ? 'var(--laranja3)'
+    : s.status === 'quase2' ? 'var(--laranja2)'
+    : s.status === 'quase1' ? 'var(--laranja1)'
+    : s.status === 'livre'  ? 'var(--verde)'
+    : '#888';
+
   document.getElementById('reportesHoje').textContent   = reportesHojeCount || (recentReports.length || '—');
 
   // Último report: HH:MM do reporte mais recente
@@ -1578,6 +1597,7 @@ function applyStatus(s) {
   if (s.status === 'fechado') {
     ring.style.stroke = '#444';
     document.getElementById('pctDisplay').textContent = '—';
+    document.getElementById('pctDisplay').style.color = '#888';
     txt.textContent   = 'FECHADO';
     title.textContent = 'Estacionamento fechado 🔒';
     document.getElementById('filaSection')?.classList.remove('visible');
