@@ -1165,7 +1165,7 @@
         <button class="btn-carona-submit" id="cSubmitBtn" disabled>ENVIAR CADASTRO →</button>
         <p class="carona-hint" style="text-align:center;margin-top:12px;">Cadastro válido para o semestre 2026.1. Após validação da matrícula você receberá os links dos grupos de WhatsApp por e-mail.</p>
       </div>
-    <div class="success" id="cSuccess">
+    <div class="carona-success" id="cSuccess" style="display:none;">
         <div style="font-size:22px;margin-bottom:10px;">✓</div>
         <p><strong>Cadastro recebido!</strong><br>Sua matrícula será verificada em breve.<br>Você receberá os links dos grupos de WhatsApp no e-mail informado.</p>
         <p style="margin-top:12px;font-size:12px;opacity:0.75;">Os grupos são formados assim que houver pelo menos 10 pessoas com perfil compatível de bairro e horário. Você será avisado por e-mail quando o grupo estiver pronto.</p>
@@ -1438,9 +1438,12 @@ function startReportsListener() {
       currentOcupacao = recentReports[0].ocupacao;
     }
 
-    applyStatus(computeStatus());
-    loadDayStats();
-    renderChart(chartMode);
+    const s = computeStatus(); // já respeita isEstacionamentoClosed()
+    applyStatus(s);
+    if (s.status !== 'fechado') {
+      loadDayStats();
+      renderChart(chartMode);
+    }
   }, err => {
     console.warn('listener err', err);
     applyStatus(fakeStatus());
@@ -1920,11 +1923,12 @@ document.addEventListener('DOMContentLoaded', () => {
   applyStatus(placeholder);
   trackPageView();
   loadAndRenderViews();
-  startReportsListener();        // listener em tempo real (sobrescreve o placeholder)
-  loadDayStats();
-  renderChart(chartMode);
+  startReportsListener();
+  if (!isEstacionamentoClosed()) {
+    loadDayStats();
+    renderChart(chartMode);
+  }
 
-  // Re-renderiza views e stats a cada 5 min
   setInterval(loadAndRenderViews, 5 * 60 * 1000);
   setInterval(loadDayStats, 5 * 60 * 1000);
 });
