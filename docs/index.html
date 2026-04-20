@@ -1228,6 +1228,22 @@
 
 <!-- Funções globais de UI (fora do module para ficarem disponíveis imediatamente) -->
 <script>
+// ══════════════════════════════════════════════
+//  HORÁRIO DE FUNCIONAMENTO (escopo global)
+//  Seg–Sex: 05h–01h | Fim de semana: Sáb 01h → Seg 05h
+// ══════════════════════════════════════════════
+function isEstacionamentoClosed() {
+  const now = new Date();
+  const dow = now.getDay();
+  const h   = now.getHours();
+  if (dow === 6 && h >= 1) return true;
+  if (dow === 0)           return true;
+  if (dow === 1 && h < 5)  return true;
+  if (h >= 1 && h < 5)     return true;
+  return false;
+}
+window.isEstacionamentoClosed = isEstacionamentoClosed;
+
 function openModal() {
   document.getElementById('modalBg').classList.add('open');
   document.getElementById('reportStatus').onchange = function() {
@@ -1297,10 +1313,25 @@ document.addEventListener('DOMContentLoaded', () => {
   const submitBtn = document.getElementById('cSubmitBtn');
   if (aceite)     aceite.addEventListener('change', cToggleBtn);
   if (submitBtn)  submitBtn.addEventListener('click', cHandleSubmit);
+
+  // Aplica fechado imediatamente, sem esperar Firebase
+  if (window.isEstacionamentoClosed()) {
+    const title = document.getElementById('heroTitle');
+    const txt   = document.getElementById('statusText');
+    const badge = document.getElementById('statusBadge');
+    const pct   = document.getElementById('pctDisplay');
+    if (title) title.textContent = 'Estacionamento fechado 🔒';
+    if (txt)   txt.textContent   = 'FECHADO';
+    if (badge) badge.className   = 'status-badge fechado';
+    if (pct)   pct.textContent   = '—';
+    const btnReport      = document.querySelector('.btn-report');
+    const btnReportFloat = document.querySelector('.btn-report-float');
+    if (btnReport)      { btnReport.disabled = true; btnReport.style.opacity = '0.35'; btnReport.style.pointerEvents = 'none'; }
+    if (btnReportFloat) { btnReportFloat.style.display = 'none'; }
+  }
 });
 </script>
 
-<!-- Firebase SDK -->
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
@@ -1456,7 +1487,7 @@ function startReportsListener() {
 // currentOcupacao já declarado acima nos GLOBALS
 
 function computeStatus() {
-  if (isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
+  if (window.isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
   if (!recentReports.length) return fakeStatus();
 
   // Garante que currentOcupacao está inicializado
@@ -1480,34 +1511,11 @@ function computeStatus() {
 }
 
 // ══════════════════════════════════════════════
-//  HORÁRIO DE FUNCIONAMENTO
-//  Seg–Sex: 05h–01h (fecha 01h–05h)
-//  Fim de semana: fecha Sáb 01h → Seg 05h
+//  HORÁRIO DE FUNCIONAMENTO — movida para script global
 // ══════════════════════════════════════════════
-function isEstacionamentoClosed() {
-  const now = new Date();
-  const dow = now.getDay(); // 0=Dom, 1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex, 6=Sáb
-  const h   = now.getHours();
-  // Sáb após 01h, dia todo de Dom, Seg antes das 05h
-  if (dow === 6 && h >= 1) return true;
-  if (dow === 0) return true;
-  if (dow === 1 && h < 5) return true;
-  // Seg–Sex: fecha 01h–05h
-  if (h >= 1 && h < 5) return true;
-  return false;
-}
-
-function getAbreText() {
-  const now = new Date();
-  const dow = now.getDay();
-  if (dow === 6 || dow === 0 || (dow === 1 && now.getHours() < 5)) {
-    return 'Abre segunda-feira às 5h';
-  }
-  return 'Abre às 5h';
-}
 
 function fakeStatus() {
-  if (isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
+  if (window.isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
   const h = new Date().getHours();
   let ocupacao;
   if      (h < 7 || h > 22) ocupacao = 5;
@@ -1823,7 +1831,6 @@ async function firestoreSaveGrupo(key, link) {
 }
 
 async function firestoreGetContadores() {
-  // Conta solicitações por combinação bairro+dia+turno a partir dos cadastros
   const snap = await getDocs(collection(db, 'cadastros_carona'));
   const contadores = {};
   snap.docs.forEach(d => {
@@ -1831,22 +1838,7 @@ async function firestoreGetContadores() {
     const bairro = data.bairro || '';
     const turnos = data.turnos || {};
     Object.entries(turnos).forEach(([diatipo, turno]) => {
-      const key = `${bairro}||${diaipo}||${turno}`;
-      contadores[key] = (contadores[key] || 0) + 1;
-    });
-  });
-  return contadores;
-}
-
-async function firestoreGetContadores() {
-  const snap = await getDocs(collection(db, 'cadastros_carona'));
-  const contadores = {};
-  snap.docs.forEach(d => {
-    const data = d.data();
-    const bairro = data.bairro || '';
-    const turnos = data.turnos || {};
-    Object.entries(turnos).forEach(([diaipo, turno]) => {
-      const key = `${bairro}||${diaipo}||${turno}`;
+      const key = `${bairro}||${diatipo}||${turno}`;
       contadores[key] = (contadores[key] || 0) + 1;
     });
   });
@@ -1882,25 +1874,12 @@ async function firestoreUpdateCarona(id, status) {
   }
 }
 
-window._firestoreAddCarona    = firestoreAddCarona;
-window._firestoreGetCaronas   = firestoreGetCaronas;
-window._firestoreUpdateCarona = firestoreUpdateCarona;
-window._firestoreGetGrupos    = firestoreGetGrupos;
-window._firestoreSaveGrupo    = firestoreSaveGrupo;
-window._firestoreGetContadores = async function() {
-  const snap = await getDocs(collection(db, 'cadastros_carona'));
-  const contadores = {};
-  snap.docs.forEach(d => {
-    const data = d.data();
-    const bairro = data.bairro || '';
-    const turnos = data.turnos || {};
-    Object.entries(turnos).forEach(([diaipo, turno]) => {
-      const key = `${bairro}||${diaipo}||${turno}`;
-      contadores[key] = (contadores[key] || 0) + 1;
-    });
-  });
-  return contadores;
-};
+window._firestoreAddCarona     = firestoreAddCarona;
+window._firestoreGetCaronas    = firestoreGetCaronas;
+window._firestoreUpdateCarona  = firestoreUpdateCarona;
+window._firestoreGetGrupos     = firestoreGetGrupos;
+window._firestoreSaveGrupo     = firestoreSaveGrupo;
+window._firestoreGetContadores = firestoreGetContadores;
 
 
 window._submitReportModule = submitReport;
@@ -1924,7 +1903,7 @@ document.addEventListener('DOMContentLoaded', () => {
   trackPageView();
   loadAndRenderViews();
   startReportsListener();
-  if (!isEstacionamentoClosed()) {
+  if (!window.isEstacionamentoClosed()) {
     loadDayStats();
     renderChart(chartMode);
   }
@@ -2186,6 +2165,7 @@ async function adminSalvarGrupo(inputId, key) {
 }
 
 
+function adminSetFilter(status, btn) {
   adminFilterStatus = status;
   document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
