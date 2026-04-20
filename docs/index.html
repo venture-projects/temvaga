@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PUC Parking — Estacionamento Rotativo</title>
+<title>PUC Parking — Estacionamento Rotativo v12</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -1464,9 +1464,12 @@ function startReportsListener() {
   onSnapshot(q, snap => {
     recentReports = snap.docs.map(d => ({ id: d.id, ...d.data(), tsMs: d.data().ts.toMillis() }));
 
-    // ✅ Restaura ocupação do banco: usa o campo salvo no reporte mais recente
+    // Restaura ocupação do banco: usa o campo salvo no reporte mais recente
     if (recentReports.length > 0 && recentReports[0].ocupacao != null) {
       currentOcupacao = recentReports[0].ocupacao;
+    } else if (currentOcupacao === null) {
+      // Nenhum reporte recente: começa o dia em 0%
+      currentOcupacao = 0;
     }
 
     const s = computeStatus(); // já respeita isEstacionamentoClosed()
@@ -1488,18 +1491,15 @@ function startReportsListener() {
 
 function computeStatus() {
   if (window.isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
-  if (!recentReports.length) return fakeStatus();
 
-  // Garante que currentOcupacao está inicializado
-  if (currentOcupacao === null) {
-    currentOcupacao = fakeStatus().ocupacao;
-  }
+  // Sem reportes ainda: começa o dia em 0%
+  if (currentOcupacao === null) currentOcupacao = 0;
 
-  // ✅ Status derivado da ocupação — evita dessincronismo entre cor/legenda e percentual
+  // Status derivado da ocupação
   const status = currentOcupacao >= 100 ? 'cheio'
-    : currentOcupacao >= 95 ? 'quase3'
-    : currentOcupacao >= 90 ? 'quase2'
-    : currentOcupacao >= 81 ? 'quase1'
+    : currentOcupacao >= 90 ? 'quase3'
+    : currentOcupacao >= 80 ? 'quase2'
+    : currentOcupacao >= 50 ? 'quase1'
     : 'livre';
 
   const cheioDocs = recentReports.filter(r => r.status === 'cheio');
@@ -1516,21 +1516,8 @@ function computeStatus() {
 
 function fakeStatus() {
   if (window.isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
-  const h = new Date().getHours();
-  let ocupacao;
-  if      (h < 7 || h > 22) ocupacao = 5;
-  else if (h < 9)            ocupacao = 30;
-  else if (h < 11)           ocupacao = 85;
-  else if (h < 14)           ocupacao = 98;
-  else if (h < 16)           ocupacao = 75;
-  else if (h < 19)           ocupacao = 55;
-  else                       ocupacao = 25;
-  const status = ocupacao >= 100 ? 'cheio'
-    : ocupacao >= 95 ? 'quase3'
-    : ocupacao >= 90 ? 'quase2'
-    : ocupacao >= 81 ? 'quase1'
-    : 'livre';
-  return { status, ocupacao, fila: status === 'cheio' ? 8 : 0, reportes: 0 };
+  // Sem estimativas por horário — começa o dia em 0%
+  return { status: 'livre', ocupacao: 0, fila: 0, reportes: 0 };
 }
 
 function applyStatus(s) {
@@ -1598,20 +1585,20 @@ function applyStatus(s) {
   }
 
   if (s.status === 'livre') {
-    txt.textContent   = 'VAGAS DISPONÍVEIS';
-    title.textContent = 'Tem vaga! Pode vir. ✅';
+    txt.textContent   = 'OCUPAÇÃO BAIXA';
+    title.textContent = 'Ocupação Baixa — tem vaga! ✅';
   } else if (s.status === 'quase1') {
-    txt.textContent   = 'FICANDO CHEIO';
-    title.textContent = 'Atenção — restam algumas vagas ⚠️';
+    txt.textContent   = 'OCUPAÇÃO MODERADA';
+    title.textContent = 'Ocupação Moderada — ainda há vagas ⚠️';
   } else if (s.status === 'quase2') {
-    txt.textContent   = 'QUASE CHEIO';
-    title.textContent = 'Poucas vagas restantes ⚠️';
+    txt.textContent   = 'OCUPAÇÃO ALTA';
+    title.textContent = 'Ocupação Alta — poucas vagas restantes ⚠️';
   } else if (s.status === 'quase3') {
-    txt.textContent   = 'LOTAÇÃO CRÍTICA';
-    title.textContent = 'Vagas muito escassas — cuidado 🟠';
+    txt.textContent   = 'QUASE CHEIO';
+    title.textContent = 'Quase cheio — vagas muito escassas 🟠';
   } else {
-    txt.textContent   = 'COMPLETAMENTE CHEIO';
-    title.textContent = 'Estacionamento lotado — há fila 🔴';
+    txt.textContent   = 'LOTADO';
+    title.textContent = 'Lotado — estacionamento cheio, há fila 🔴';
   }
 
   const filaEl = document.getElementById('filaSection');
@@ -1658,10 +1645,10 @@ async function renderChart(mode) {
       data = labs.map(l => {
         const hh = parseInt(l);
         const b  = byHr[hh];
-        if (!b || !b.total) return fakeHourOccupancy(hh);
+        if (!b || !b.total) return 0; // sem reporte nessa hora = 0
         return Math.round((b.cheio * 100 + b.quase * 80 + b.livre * 30) / b.total);
       });
-    } catch { data = labs.map(l => fakeHourOccupancy(parseInt(l))); }
+    } catch { data = labs.map(() => 0); }
 
   } else if (mode === 'dia') {
     labs = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
@@ -1718,24 +1705,23 @@ async function submitReport() {
   const h = new Date().getHours();
   const isTarde = h >= 13; // tarde = após 13h
 
-  if (currentOcupacao === null) {
-    currentOcupacao = fakeStatus().ocupacao;
-  }
+  if (currentOcupacao === null) currentOcupacao = 0;
 
   if (status === 'livre') {
     if (isTarde) {
-      // Tarde: cada reporte "tem vagas" diminui 5%, mínimo 50%
-      currentOcupacao = Math.max(50, currentOcupacao - 5);
+      // Tarde: cada reporte "tem vagas" diminui 2,5%, mínimo 0%
+      currentOcupacao = Math.max(0, currentOcupacao - 2.5);
     } else {
-      // Manhã: cada reporte "tem vagas" aumenta 5%, máximo 90%
-      currentOcupacao = Math.min(90, currentOcupacao + 5);
+      // Manhã: cada reporte "tem vagas" aumenta 2,5%, máximo 90%
+      currentOcupacao = Math.min(90, currentOcupacao + 2.5);
     }
   } else if (status === 'quase') {
-    // "Quase cheio" → fixa em 95%
-    currentOcupacao = 95;
+    // "Quase cheio" → sobe 2,5% em direção a 95%
+    currentOcupacao = Math.min(95, Math.max(currentOcupacao, 80) + 2.5);
   } else if (status === 'cheio') {
     currentOcupacao = 100;
   }
+  currentOcupacao = Math.round(currentOcupacao * 10) / 10; // arredonda a 1 decimal
 
   try {
     await addDoc(collection(db, 'reports'), {
@@ -1752,9 +1738,9 @@ async function submitReport() {
 
     // Atualiza o status imediatamente com a nova ocupação
     const newStatusLabel = currentOcupacao >= 100 ? 'cheio'
-      : currentOcupacao >= 95 ? 'quase3'
-      : currentOcupacao >= 90 ? 'quase2'
-      : currentOcupacao >= 81 ? 'quase1'
+      : currentOcupacao >= 90 ? 'quase3'
+      : currentOcupacao >= 80 ? 'quase2'
+      : currentOcupacao >= 50 ? 'quase1'
       : 'livre';
     applyStatus({ status: newStatusLabel, ocupacao: currentOcupacao, fila });
     renderChart(chartMode);
@@ -1895,11 +1881,9 @@ window.switchTab      = switchTabInternal;
 //  INIT
 // ══════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', () => {
-  // Mostra estimativa por horário enquanto o Firestore carrega.
-  // currentOcupacao permanece null até o listener confirmar — assim
-  // o refresh nunca reseta o valor ajustado pelos reportes.
-  const placeholder = fakeStatus();
-  applyStatus(placeholder);
+  // Começa o dia com 0% — será atualizado apenas pelos reportes reais
+  currentOcupacao = 0;
+  applyStatus({ status: 'livre', ocupacao: 0, fila: 0, reportes: 0 });
   trackPageView();
   loadAndRenderViews();
   startReportsListener();
