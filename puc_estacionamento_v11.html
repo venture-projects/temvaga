@@ -840,7 +840,32 @@
   footer a:hover { color: var(--ouro); }
 
   /* ── TOAST ── */
-  .toast {
+  .carona-nudge {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+    background: rgba(30,30,30,0.97);
+    border: 1px solid rgba(255,209,0,0.35);
+    color: #FFD100;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    padding: 12px 20px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: transform 0.3s ease, opacity 0.3s ease;
+    z-index: 999;
+    white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    pointer-events: none;
+  }
+  .carona-nudge.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+  }
+
     position: fixed;
     bottom: 24px;
     right: 24px;
@@ -1140,9 +1165,10 @@
         <button class="btn-carona-submit" id="cSubmitBtn" disabled>ENVIAR CADASTRO →</button>
         <p class="carona-hint" style="text-align:center;margin-top:12px;">Cadastro válido para o semestre 2026.1. Após validação da matrícula você receberá os links dos grupos de WhatsApp por e-mail.</p>
       </div>
-      <div class="carona-success" id="cSuccess">
+    <div class="success" id="cSuccess">
         <div style="font-size:22px;margin-bottom:10px;">✓</div>
         <p><strong>Cadastro recebido!</strong><br>Sua matrícula será verificada em breve.<br>Você receberá os links dos grupos de WhatsApp no e-mail informado.</p>
+        <p style="margin-top:12px;font-size:12px;opacity:0.75;">Os grupos são formados assim que houver pelo menos 10 pessoas com perfil compatível de bairro e horário. Você será avisado por e-mail quando o grupo estiver pronto.</p>
       </div>
 
     </div>
@@ -1167,6 +1193,9 @@
 
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
+<div class="carona-nudge" id="caronaNudge" onclick="nudgeGoToCarona()">
+  🚗 Tem colegas do seu bairro buscando carona &nbsp;→
+</div>
 
 <!-- REPORT MODAL -->
 <div class="modal-bg" id="modalBg">
@@ -1708,6 +1737,7 @@ async function submitReport() {
     // Fecha modal e avisa
     document.getElementById('modalBg').classList.remove('open');
     showToast('✅ Reporte enviado! Obrigado!');
+    setTimeout(() => showCaronaNudge(), 3500);
 
     // Atualiza o status imediatamente com a nova ocupação
     const newStatusLabel = currentOcupacao >= 100 ? 'cheio'
@@ -1723,7 +1753,12 @@ async function submitReport() {
   }
 }
 
-function registrarCarona() { showToast('🚗 Em breve! Cadastre-se na lista de espera.'); }
+function nudgeGoToCarona() {
+  document.getElementById('caronaNudge').classList.remove('show');
+  const section = document.getElementById('caronaSection');
+  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 
 // ══════════════════════════════════════════════
 //  REFRESH BUTTON
@@ -1751,6 +1786,13 @@ function showToast(msg) {
   setTimeout(() => t.classList.remove('show'), 3000);
 }
 
+function showCaronaNudge() {
+  const nudge = document.getElementById('caronaNudge');
+  if (!nudge) return;
+  nudge.classList.add('show');
+  setTimeout(() => nudge.classList.remove('show'), 5000);
+}
+
 // ══════════════════════════════════════════════
 //  CARONA — FIRESTORE
 // ══════════════════════════════════════════════
@@ -1759,23 +1801,103 @@ async function firestoreAddCarona(data) {
 }
 
 async function firestoreGetCaronas(status) {
-  let q;
-  if (status === 'todos') {
-    q = query(collection(db, 'cadastros_carona'), orderBy('criadoEm', 'desc'));
-  } else {
-    q = query(collection(db, 'cadastros_carona'), where('status','==',status), orderBy('criadoEm','desc'));
-  }
-  const snap = await getDocs(q);
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  // Busca todos e filtra no cliente — evita necessidade de índice composto
+  const snap = await getDocs(collection(db, 'cadastros_carona'));
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const filtered = status === 'todos' ? all : all.filter(d => d.status === status);
+  return filtered.sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+}
+
+async function firestoreGetGrupos() {
+  const snap = await getDocs(collection(db, 'grupos_carona'));
+  const map = {};
+  snap.docs.forEach(d => { map[d.id] = d.data(); });
+  return map;
+}
+
+async function firestoreSaveGrupo(key, link) {
+  await setDoc(doc(db, 'grupos_carona', key), { link }, { merge: true });
+}
+
+async function firestoreGetContadores() {
+  // Conta solicitações por combinação bairro+dia+turno a partir dos cadastros
+  const snap = await getDocs(collection(db, 'cadastros_carona'));
+  const contadores = {};
+  snap.docs.forEach(d => {
+    const data = d.data();
+    const bairro = data.bairro || '';
+    const turnos = data.turnos || {};
+    Object.entries(turnos).forEach(([diatipo, turno]) => {
+      const key = `${bairro}||${diaipo}||${turno}`;
+      contadores[key] = (contadores[key] || 0) + 1;
+    });
+  });
+  return contadores;
+}
+
+async function firestoreGetContadores() {
+  const snap = await getDocs(collection(db, 'cadastros_carona'));
+  const contadores = {};
+  snap.docs.forEach(d => {
+    const data = d.data();
+    const bairro = data.bairro || '';
+    const turnos = data.turnos || {};
+    Object.entries(turnos).forEach(([diaipo, turno]) => {
+      const key = `${bairro}||${diaipo}||${turno}`;
+      contadores[key] = (contadores[key] || 0) + 1;
+    });
+  });
+  return contadores;
 }
 
 async function firestoreUpdateCarona(id, status) {
   await setDoc(doc(db, 'cadastros_carona', id), { status }, { merge: true });
+  if (status === 'aprovado') {
+    // Busca dados do aluno
+    const snap = await getDoc(doc(db, 'cadastros_carona', id));
+    const data = snap.data();
+    // Busca grupos cadastrados
+    const grupos = await firestoreGetGrupos();
+    // Monta links para os turnos do aluno
+    const dias = ['seg','ter','qua','qui','sex'];
+    const nomeDia = {seg:'Segunda',ter:'Terça',qua:'Quarta',qui:'Quinta',sex:'Sexta'};
+    const turnos = data.turnos || {};
+    let linhasLinks = [];
+    dias.forEach(dia => {
+      ['chegada','saida'].forEach(tipo => {
+        const turno = turnos[`${dia}_${tipo}`];
+        if (!turno) return;
+        const key = `${data.bairro}||${dia}_${tipo}||${turno}`;
+        const link = grupos[key]?.link;
+        const label = `${nomeDia[dia]} · ${tipo === 'chegada' ? 'Chegada' : 'Saída'} ${turno} · ${data.bairro}`;
+        linhasLinks.push(link ? `${label}: ${link}` : `${label}: grupo em formação`);
+      });
+    });
+    const linksText = linhasLinks.length ? linhasLinks.join('\n') : 'Grupos em formação — você será avisado em breve.';
+    // Dispara e-mail via EmailJS
+    await window._sendCaronaEmail({ nome: data.nome, email: data.email, links: linksText });
+  }
 }
 
 window._firestoreAddCarona    = firestoreAddCarona;
 window._firestoreGetCaronas   = firestoreGetCaronas;
 window._firestoreUpdateCarona = firestoreUpdateCarona;
+window._firestoreGetGrupos    = firestoreGetGrupos;
+window._firestoreSaveGrupo    = firestoreSaveGrupo;
+window._firestoreGetContadores = async function() {
+  const snap = await getDocs(collection(db, 'cadastros_carona'));
+  const contadores = {};
+  snap.docs.forEach(d => {
+    const data = d.data();
+    const bairro = data.bairro || '';
+    const turnos = data.turnos || {};
+    Object.entries(turnos).forEach(([diaipo, turno]) => {
+      const key = `${bairro}||${diaipo}||${turno}`;
+      contadores[key] = (contadores[key] || 0) + 1;
+    });
+  });
+  return contadores;
+};
 
 
 window._submitReportModule = submitReport;
@@ -1808,6 +1930,15 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+(function(){ emailjs.init({ publicKey: 'ofCjNwWEPTZ9RLBJQ' }); })();
+window._sendCaronaEmail = async function({ nome, email, links }) {
+  await emailjs.send('service_rh0y0me', 'template_zfu9d3m', { nome, links, to_email: email });
+};
+</script>
+
 <!-- ADMIN PAGE (oculta — acessível via #admin) -->
 <div id="adminOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0A0A0A;overflow-y:auto;">
 
@@ -1823,29 +1954,107 @@ document.addEventListener('DOMContentLoaded', () => {
 
   <!-- PAINEL -->
   <div id="adminPanel" style="display:none;max-width:900px;margin:0 auto;padding:40px 20px 80px;">
-    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:32px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <div>
         <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.3);">PUC PARKING · ADMIN</div>
-        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#F5F5F0;margin-top:4px;">Cadastros de Carona</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#F5F5F0;margin-top:4px;" id="adminPanelTitle">Cadastros de Carona</div>
       </div>
       <button onclick="closeAdmin()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);padding:8px 16px;border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;">✕ SAIR</button>
     </div>
 
-    <!-- FILTROS -->
-    <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
-      <button class="admin-filter-btn active" onclick="adminSetFilter('pendente',this)">PENDENTES</button>
-      <button class="admin-filter-btn" onclick="adminSetFilter('aprovado',this)">APROVADOS</button>
-      <button class="admin-filter-btn" onclick="adminSetFilter('rejeitado',this)">REJEITADOS</button>
-      <button class="admin-filter-btn" onclick="adminSetFilter('todos',this)">TODOS</button>
+    <!-- ABAS PRINCIPAIS -->
+    <div style="display:flex;gap:8px;margin-bottom:28px;">
+      <button class="admin-tab-btn active" id="tabBtnCadastros" onclick="adminSwitchTab('cadastros',this)">CADASTROS</button>
+      <button class="admin-tab-btn" id="tabBtnGrupos" onclick="adminSwitchTab('grupos',this)">GRUPOS & LINKS</button>
     </div>
 
-    <div id="adminCount" style="font-size:12px;color:rgba(255,255,255,.3);font-family:'Space Mono',monospace;margin-bottom:16px;"></div>
-    <div id="adminList"></div>
+    <!-- ABA CADASTROS -->
+    <div id="adminTabCadastros">
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="admin-filter-btn active" onclick="adminSetFilter('pendente',this)">PENDENTES</button>
+        <button class="admin-filter-btn" onclick="adminSetFilter('aprovado',this)">APROVADOS</button>
+        <button class="admin-filter-btn" onclick="adminSetFilter('rejeitado',this)">REJEITADOS</button>
+        <button class="admin-filter-btn" onclick="adminSetFilter('todos',this)">TODOS</button>
+      </div>
+      <div id="adminCount" style="font-size:12px;color:rgba(255,255,255,.3);font-family:'Space Mono',monospace;margin-bottom:16px;"></div>
+      <div id="adminList"></div>
+    </div>
+
+    <!-- ABA GRUPOS -->
+    <div id="adminTabGrupos" style="display:none;">
+      <p style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:20px;line-height:1.6;">Grupos ordenados por número de solicitações. Cole o link do WhatsApp e salve. Combinações sem solicitações não aparecem.</p>
+      <div id="adminGruposList"></div>
+    </div>
   </div>
 </div>
 
 <style>
-  .admin-filter-btn {
+  .admin-tab-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.4);
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .admin-tab-btn.active { background: rgba(255,209,0,.15); border-color: rgba(255,209,0,.4); color: #FFD100; }
+  .admin-grupo-card {
+    background: #1E1E1E;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .admin-grupo-badge {
+    background: rgba(255,209,0,.12);
+    border: 1px solid rgba(255,209,0,.25);
+    color: #FFD100;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .admin-grupo-label { font-size: 13px; color: #F5F5F0; flex: 1; min-width: 180px; }
+  .admin-grupo-input {
+    flex: 2;
+    min-width: 220px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 7px;
+    color: #F5F5F0;
+    font-size: 12px;
+    font-family: 'Syne', sans-serif;
+    outline: none;
+  }
+  .admin-grupo-input:focus { border-color: rgba(255,209,0,.4); }
+  .admin-grupo-input.saved { border-color: rgba(0,193,124,.4); background: rgba(0,193,124,.07); }
+  .btn-salvar-grupo {
+    background: rgba(255,209,0,.15);
+    border: 1px solid rgba(255,209,0,.3);
+    color: #FFD100;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .btn-salvar-grupo:hover { opacity: .8; }
+
     background: rgba(255,255,255,.06);
     border: 1px solid rgba(255,255,255,.1);
     color: rgba(255,255,255,.4);
@@ -1922,7 +2131,57 @@ function adminLogin() {
   }
 }
 
-function adminSetFilter(status, btn) {
+function adminSwitchTab(tab, btn) {
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('adminTabCadastros').style.display = tab === 'cadastros' ? '' : 'none';
+  document.getElementById('adminTabGrupos').style.display    = tab === 'grupos'    ? '' : 'none';
+  document.getElementById('adminPanelTitle').textContent = tab === 'cadastros' ? 'Cadastros de Carona' : 'Grupos & Links';
+  if (tab === 'grupos') adminLoadGrupos();
+}
+
+async function adminLoadGrupos() {
+  const el = document.getElementById('adminGruposList');
+  el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;font-family:Space Mono,monospace;">Carregando…</div>';
+  try {
+    const [contadores, grupos] = await Promise.all([
+      window._firestoreGetContadores(),
+      window._firestoreGetGrupos()
+    ]);
+    const dias = ['seg','ter','qua','qui','sex'];
+    const nomeDia = {seg:'Segunda',ter:'Terça',qua:'Quarta',qui:'Quinta',sex:'Sexta'};
+    // Monta lista de entradas únicas ordenadas por contagem
+    const entries = Object.entries(contadores)
+      .filter(([,v]) => v > 0)
+      .sort(([,a],[,b]) => b - a);
+    if (!entries.length) { el.innerHTML = '<div style="color:rgba(255,255,255,.25);font-size:13px;font-family:Space Mono,monospace;padding:20px 0;">Nenhuma solicitação ainda.</div>'; return; }
+    el.innerHTML = entries.map(([key, count]) => {
+      const [bairro, diaipo, turno] = key.split('||');
+      const [dia, tipo] = diaipo.split('_');
+      const label = `${bairro} · ${nomeDia[dia] || dia} · ${tipo === 'chegada' ? 'Chegada' : 'Saída'} ${turno}`;
+      const linkAtual = grupos[key]?.link || '';
+      return `<div class="admin-grupo-card">
+        <span class="admin-grupo-badge">${count} solicitação${count > 1 ? 'ões' : ''}</span>
+        <span class="admin-grupo-label">${label}</span>
+        <input class="admin-grupo-input${linkAtual ? ' saved' : ''}" id="ginput-${btoa(key).replace(/=/g,'')}" placeholder="https://chat.whatsapp.com/..." value="${linkAtual}">
+        <button class="btn-salvar-grupo" onclick="adminSalvarGrupo('${btoa(key).replace(/=/g,'')}','${key}')">SALVAR</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:#FF3B3B;font-size:13px;">Erro ao carregar grupos.</div>';
+    console.error(e);
+  }
+}
+
+async function adminSalvarGrupo(inputId, key) {
+  const input = document.getElementById('ginput-' + inputId);
+  const link = input.value.trim();
+  await window._firestoreSaveGrupo(key, link);
+  input.classList.add('saved');
+  setTimeout(() => input.classList.remove('saved'), 2000);
+}
+
+
   adminFilterStatus = status;
   document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
   btn.classList.add('active');
