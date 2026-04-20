@@ -1464,12 +1464,10 @@ function startReportsListener() {
   onSnapshot(q, snap => {
     recentReports = snap.docs.map(d => ({ id: d.id, ...d.data(), tsMs: d.data().ts.toMillis() }));
 
-    // Restaura ocupação do banco: usa o campo salvo no reporte mais recente
+    // Atualiza ocupação apenas se houver reportes recentes (últimos 30 min)
+    // Se não houver, mantém o valor restaurado por restoreOcupacaoDoDia
     if (recentReports.length > 0 && recentReports[0].ocupacao != null) {
       currentOcupacao = recentReports[0].ocupacao;
-    } else if (currentOcupacao === null) {
-      // Nenhum reporte recente: começa o dia em 0%
-      currentOcupacao = 0;
     }
 
     const s = computeStatus(); // já respeita isEstacionamentoClosed()
@@ -1898,14 +1896,44 @@ window.refreshData    = refreshData;
 window.switchTab      = switchTabInternal;
 
 // ══════════════════════════════════════════════
+//  RESTAURA OCUPAÇÃO DO DIA (desde meia-noite)
+//  Evita zerar ao recarregar por falta de reporte recente
+// ══════════════════════════════════════════════
+async function restoreOcupacaoDoDia() {
+  try {
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const cutoff = Timestamp.fromMillis(startOfDay.getTime());
+    const snap = await getDocs(query(
+      collection(db, 'reports'),
+      where('ts', '>=', cutoff),
+      orderBy('ts', 'desc')
+    ));
+    if (!snap.empty) {
+      const ultimo = snap.docs[0].data();
+      if (ultimo.ocupacao != null) {
+        currentOcupacao = ultimo.ocupacao;
+      }
+    }
+    // Se nao houver nenhum reporte hoje, currentOcupacao permanece 0
+  } catch(e) {
+    console.warn('restoreOcupacaoDoDia err', e);
+  }
+}
+
+// ══════════════════════════════════════════════
 //  INIT
 // ══════════════════════════════════════════════
-document.addEventListener('DOMContentLoaded', () => {
-  // Começa o dia com 0% — será atualizado apenas pelos reportes reais
+document.addEventListener('DOMContentLoaded', async () => {
+  // Mostra 0% enquanto carrega
   currentOcupacao = 0;
   applyStatus({ status: 'livre', ocupacao: 0, fila: 0, reportes: 0 });
   trackPageView();
   loadAndRenderViews();
+
+  // Restaura o ultimo valor do dia ANTES de iniciar o listener
+  // Assim reloads e reconexoes nao zeram a ocupacao
+  await restoreOcupacaoDoDia();
+
   startReportsListener();
   if (!window.isEstacionamentoClosed()) {
     loadDayStats();
