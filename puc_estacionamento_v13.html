@@ -2168,6 +2168,18 @@ function adminSwitchTab(tab, btn) {
 async function adminLoadGrupos() {
   const el = document.getElementById('adminGruposList');
   el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;font-family:Space Mono,monospace;">Carregando…</div>';
+
+  // Aguarda o módulo Firebase estar pronto (até 5s)
+  let tentativas = 0;
+  while ((!window._firestoreGetContadores || !window._firestoreGetGrupos) && tentativas < 50) {
+    await new Promise(r => setTimeout(r, 100));
+    tentativas++;
+  }
+  if (!window._firestoreGetContadores || !window._firestoreGetGrupos) {
+    el.innerHTML = '<div style="color:#FF3B3B;font-size:13px;">Firebase não carregado. Recarregue a página.</div>';
+    return;
+  }
+
   try {
     const [contadores, grupos] = await Promise.all([
       window._firestoreGetContadores(),
