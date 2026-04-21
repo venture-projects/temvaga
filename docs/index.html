@@ -3,8 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PUC Parking — Estacionamento Rotativo v12</title>
+<title>PUC Parking — Estacionamento Rotativo v13</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6134568859171847"
+     crossorigin="anonymous"></script>
 <style>
   :root {
     --azul: #0033A0;
@@ -810,6 +812,8 @@
     .carona-fields { grid-template-columns: 1fr; }
     .carona-cal-head, .carona-cal-row { grid-template-columns: 60px repeat(5,1fr); }
     .carona-cal-cell select { font-size: 9px; }
+    .logo-text { display: none; }
+    .btn-report { display: none; }
   }
 
 
@@ -1913,6 +1917,11 @@ async function restoreOcupacaoDoDia() {
       if (ultimo.ocupacao != null) {
         currentOcupacao = ultimo.ocupacao;
       }
+      // Exibe o horario do ultimo reporte do dia imediatamente
+      const tsMs = snap.docs[0].data().ts.toMillis();
+      const d = new Date(tsMs);
+      document.getElementById('ultimoReport').textContent =
+        d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
     }
     // Se nao houver nenhum reporte hoje, currentOcupacao permanece 0
   } catch(e) {
@@ -2070,6 +2079,7 @@ window._sendCaronaEmail = async function({ nome, email, links }) {
   }
   .btn-salvar-grupo:hover { opacity: .8; }
 
+  .admin-filter-btn {
     background: rgba(255,255,255,.06);
     border: 1px solid rgba(255,255,255,.1);
     color: rgba(255,255,255,.4);
