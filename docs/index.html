@@ -850,24 +850,32 @@
     left: 50%;
     transform: translateX(-50%) translateY(20px);
     opacity: 0;
-    background: rgba(30,30,30,0.97);
-    border: 1px solid rgba(255,209,0,0.35);
-    color: #FFD100;
+    background: var(--ouro);
+    border: 2px solid rgba(255,255,255,0.3);
+    color: var(--preto);
     font-family: 'Space Mono', monospace;
-    font-size: 12px;
-    padding: 12px 20px;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 14px 28px;
     border-radius: 30px;
     cursor: pointer;
-    transition: transform 0.3s ease, opacity 0.3s ease;
+    transition: transform 0.4s cubic-bezier(.4,0,.2,1), opacity 0.4s ease, box-shadow 0.3s;
     z-index: 999;
     white-space: nowrap;
-    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+    box-shadow: 0 6px 32px rgba(255,209,0,0.45);
     pointer-events: none;
+    letter-spacing: 0.04em;
+    animation: none;
   }
   .carona-nudge.show {
     transform: translateX(-50%) translateY(0);
     opacity: 1;
     pointer-events: auto;
+    animation: nudgePulse 2s infinite 0.5s;
+  }
+  @keyframes nudgePulse {
+    0%,100% { box-shadow: 0 6px 32px rgba(255,209,0,0.45); }
+    50%      { box-shadow: 0 6px 48px rgba(255,209,0,0.75); }
   }
 
     position: fixed;
@@ -1216,7 +1224,7 @@
 <!-- TOAST -->
 <div class="toast" id="toast"></div>
 <div class="carona-nudge" id="caronaNudge" onclick="nudgeGoToCarona()">
-  🚗 Tem colegas do seu bairro buscando carona &nbsp;→
+  🚗 Já se cadastrou nos grupos de carona? &nbsp;→
 </div>
 
 <!-- REPORT MODAL -->
