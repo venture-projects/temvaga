@@ -2200,8 +2200,8 @@ async function adminLoadGrupos() {
       return `<div class="admin-grupo-card">
         <span class="admin-grupo-badge">${count} solicitação${count > 1 ? 'ões' : ''}</span>
         <span class="admin-grupo-label">${label}</span>
-        <input class="admin-grupo-input${linkAtual ? ' saved' : ''}" id="ginput-${btoa(key).replace(/=/g,'')}" placeholder="https://chat.whatsapp.com/..." value="${linkAtual}">
-        <button class="btn-salvar-grupo" onclick="adminSalvarGrupo('${btoa(key).replace(/=/g,'')}','${key}')">SALVAR</button>
+        <input class="admin-grupo-input${linkAtual ? ' saved' : ''}" id="ginput-${btoa(unescape(encodeURIComponent(key))).replace(/=/g,'')}" placeholder="https://chat.whatsapp.com/..." value="${linkAtual}">
+        <button class="btn-salvar-grupo" onclick="adminSalvarGrupo('${btoa(unescape(encodeURIComponent(key))).replace(/=/g,'')}','${key}')">SALVAR</button>
       </div>`;
     }).join('');
   } catch(e) {
@@ -2213,7 +2213,9 @@ async function adminLoadGrupos() {
 async function adminSalvarGrupo(inputId, key) {
   const input = document.getElementById('ginput-' + inputId);
   const link = input.value.trim();
-  await window._firestoreSaveGrupo(key, link);
+  // Decodifica a key que foi passada como atributo HTML (pode ter entidades)
+  const keyDecoded = decodeURIComponent(escape(atob(inputId.replace(/-/g, '+').replace(/_/g, '/'))));
+  await window._firestoreSaveGrupo(keyDecoded || key, link);
   input.classList.add('saved');
   setTimeout(() => input.classList.remove('saved'), 2000);
 }
