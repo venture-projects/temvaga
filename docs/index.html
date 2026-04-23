@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PUC Parking — Estacionamento Rotativo v13</title>
+<title>PUC Parking — Estacionamento Rotativo v16</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6134568859171847"
      crossorigin="anonymous"></script>
@@ -1803,6 +1803,7 @@ function nudgeGoToCarona() {
   const section = document.getElementById('caronaSection');
   if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
+window.nudgeGoToCarona = nudgeGoToCarona;
 
 
 // ══════════════════════════════════════════════
