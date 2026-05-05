@@ -1,0 +1,2320 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PUC Parking — Estacionamento Rotativo v16</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6134568859171847"
+     crossorigin="anonymous"></script>
+<style>
+  :root {
+    --azul: #0033A0;
+    --ouro: #FFD100;
+    --branco: #F5F5F0;
+    --preto: #0A0A0A;
+    --cinza: #1C1C1C;
+    --verde: #00C17C;
+    --vermelho: #FF3B3B;
+    --laranja: #FF8C00;
+    --laranja1: #FFB347;
+    --laranja2: #FF9500;
+    --laranja3: #FF8C00;
+    --surface: #141414;
+    --card: #1E1E1E;
+    --border: rgba(255,255,255,0.08);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--preto);
+    color: var(--branco);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── NOISE OVERLAY ── */
+  body::before {
+    content:'';
+    position:fixed;
+    inset:0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events:none;
+    z-index:0;
+  }
+
+  /* ── HEADER ── */
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    background: rgba(10,10,10,0.92);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+    padding: 0 24px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+  }
+  .logo-badge {
+    background: var(--azul);
+    color: var(--ouro);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.1em;
+  }
+  .logo-text {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--branco);
+    letter-spacing: 0.05em;
+  }
+
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+
+  .nav-link {
+    font-size: 12px;
+    color: rgba(245,245,240,0.5);
+    text-decoration: none;
+    letter-spacing: 0.08em;
+    transition: color 0.2s;
+    cursor: pointer;
+  }
+  .nav-link:hover { color: var(--ouro); }
+
+  .btn-report {
+    background: var(--ouro);
+    color: var(--preto);
+    border: 2px solid transparent;
+    padding: 10px 22px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.07em;
+    transition: opacity 0.2s, transform 0.15s, box-shadow 0.2s;
+    box-shadow: 0 0 0 0 rgba(255,209,0,0.5);
+    animation: reportPulse 2s infinite;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+  }
+  .btn-report .btn-report-icon {
+    font-size: 15px;
+    line-height: 1;
+  }
+  .btn-report .btn-report-sub {
+    display: block;
+    font-size: 8px;
+    font-weight: 400;
+    letter-spacing: 0.06em;
+    color: rgba(10,10,10,0.65);
+    line-height: 1;
+    margin-top: 2px;
+  }
+  .btn-report .btn-report-inner {
+    display: flex;
+    flex-direction: column;
+    text-align: left;
+  }
+  .btn-report:hover { opacity: 0.92; transform: translateY(-2px); box-shadow: 0 8px 24px rgba(255,209,0,0.45); animation: none; border-color: rgba(255,255,255,0.3); }
+  .btn-report:active { transform: translateY(0); }
+  @keyframes reportPulse {
+    0%,100% { box-shadow: 0 0 0 0 rgba(255,209,0,0.6), 0 2px 8px rgba(255,209,0,0.2); }
+    50%      { box-shadow: 0 0 0 10px rgba(255,209,0,0), 0 2px 8px rgba(255,209,0,0.2); }
+  }
+
+  /* ── MAIN ── */
+  main {
+    position: relative;
+    z-index: 1;
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 40px 20px 80px;
+  }
+
+  /* ── HERO STATUS ── */
+  .hero {
+    text-align: center;
+    margin-bottom: 48px;
+  }
+
+  .status-ring {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 28px;
+  }
+  .status-ring svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .ring-bg { fill: none; stroke: rgba(255,255,255,0.07); stroke-width: 10; }
+  .ring-fill {
+    fill: none;
+    stroke-width: 10;
+    stroke-linecap: round;
+    transition: stroke-dashoffset 1.2s cubic-bezier(.4,0,.2,1), stroke 0.5s;
+    stroke-dasharray: 502;
+  }
+  .ring-label {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .ring-pct {
+    font-family: 'Syne', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    line-height: 1.2;
+    text-align: center;
+    letter-spacing: 0.04em;
+    padding: 0 12px;
+  }
+  .ring-sub {
+    display: none;
+  }
+
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 20px;
+    border-radius: 999px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    margin-bottom: 16px;
+    transition: background 0.5s, color 0.5s;
+  }
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0%,100% { opacity:1; transform:scale(1); }
+    50% { opacity:0.5; transform:scale(1.3); }
+  }
+  .status-badge.fechado { background: rgba(120,120,120,0.15); color: #888; border: 1px solid rgba(120,120,120,0.3); }
+  .status-badge.fechado .status-dot { background: #888; }
+  .status-badge.livre .status-dot { background: var(--verde); }
+  .status-badge.cheio { background: rgba(255,59,59,0.15); color: var(--vermelho); border: 1px solid rgba(255,59,59,0.3); }
+  .status-badge.cheio .status-dot { background: var(--vermelho); }
+  .status-badge.quase1 { background: rgba(255,179,71,0.15); color: var(--laranja1); border: 1px solid rgba(255,179,71,0.3); }
+  .status-badge.quase1 .status-dot { background: var(--laranja1); }
+  .status-badge.quase2 { background: rgba(255,149,0,0.15); color: var(--laranja2); border: 1px solid rgba(255,149,0,0.3); }
+  .status-badge.quase2 .status-dot { background: var(--laranja2); }
+  .status-badge.quase3 { background: rgba(255,140,0,0.15); color: var(--laranja3); border: 1px solid rgba(255,140,0,0.3); }
+  .status-badge.quase3 .status-dot { background: var(--laranja3); }
+
+  .hero-title {
+    font-size: clamp(26px,5vw,40px);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 8px;
+  }
+  .hero-sub {
+    font-size: 14px;
+    color: rgba(245,245,240,0.5);
+    letter-spacing: 0.05em;
+  }
+
+  /* ── CARDS GRID ── */
+  .cards {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-bottom: 40px;
+  }
+
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .card:hover { border-color: rgba(255,255,255,0.18); transform: translateY(-2px); }
+
+  .card-icon {
+    font-size: 24px;
+    margin-bottom: 10px;
+  }
+  .card-label {
+    font-size: 10px;
+    letter-spacing: 0.14em;
+    color: rgba(245,245,240,0.4);
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .card-value {
+    font-family: 'Space Mono', monospace;
+    font-size: 28px;
+    font-weight: 700;
+    color: var(--ouro);
+    line-height: 1;
+  }
+  .card-unit {
+    font-size: 11px;
+    color: rgba(245,245,240,0.35);
+    margin-top: 4px;
+  }
+
+  /* ── UPDATE BAR ── */
+  .update-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 16px;
+    margin-bottom: 40px;
+    font-size: 11px;
+    color: rgba(245,245,240,0.4);
+    font-family: 'Space Mono', monospace;
+  }
+  .update-bar span { color: rgba(245,245,240,0.7); }
+
+  .btn-refresh {
+    background: none;
+    border: 1px solid var(--border);
+    color: rgba(245,245,240,0.5);
+    padding: 5px 12px;
+    border-radius: 5px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .btn-refresh:hover { border-color: var(--ouro); color: var(--ouro); }
+  .btn-refresh.spinning { animation: spin 0.6s linear; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  /* ── REPORT MODAL ── */
+  .modal-bg {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.8);
+    backdrop-filter: blur(6px);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+  .modal-bg.open { display: flex; }
+
+  .modal {
+    background: var(--cinza);
+    border: 1px solid rgba(255,255,255,0.12);
+    border-radius: 16px;
+    padding: 32px;
+    width: 90%;
+    max-width: 440px;
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { opacity:0; transform:translateY(20px); }
+    to   { opacity:1; transform:translateY(0); }
+  }
+
+  .modal h2 {
+    font-size: 18px;
+    font-weight: 800;
+    margin-bottom: 6px;
+  }
+  .modal p {
+    font-size: 12px;
+    color: rgba(245,245,240,0.45);
+    margin-bottom: 24px;
+    line-height: 1.6;
+  }
+
+  .field { margin-bottom: 16px; }
+  .field label {
+    display: block;
+    font-size: 11px;
+    letter-spacing: 0.1em;
+    color: rgba(245,245,240,0.5);
+    margin-bottom: 6px;
+    text-transform: uppercase;
+  }
+  .field select, .field input[type=range] {
+    width: 100%;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    color: var(--branco);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    padding: 10px 12px;
+    appearance: none;
+    -webkit-appearance: none;
+    cursor: pointer;
+  }
+  .field select:focus { outline: none; border-color: var(--ouro); }
+
+  .range-display {
+    display: flex;
+    justify-content: space-between;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: rgba(245,245,240,0.4);
+    margin-top: 5px;
+  }
+  .range-val {
+    font-size: 20px;
+    font-weight: 700;
+    color: var(--ouro);
+    text-align: center;
+    margin: 4px 0;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 24px;
+  }
+  .btn-cancel {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border);
+    color: rgba(245,245,240,0.5);
+    padding: 11px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .btn-cancel:hover { border-color: rgba(255,255,255,0.3); color: var(--branco); }
+  .btn-submit {
+    flex: 2;
+    background: var(--ouro);
+    border: none;
+    color: var(--preto);
+    padding: 11px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .btn-submit:hover { opacity: 0.85; }
+
+  /* ── FILA SECTION ── */
+  .fila-section {
+    background: rgba(255,59,59,0.05);
+    border: 1px solid rgba(255,59,59,0.2);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 40px;
+    display: none;
+  }
+  .fila-section.visible { display: block; }
+  .fila-title {
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    color: var(--vermelho);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    font-weight: 700;
+  }
+  .fila-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .fila-stat-val {
+    font-family: 'Space Mono', monospace;
+    font-size: 32px;
+    font-weight: 700;
+    color: var(--vermelho);
+  }
+  .fila-stat-label {
+    font-size: 11px;
+    color: rgba(245,245,240,0.4);
+    margin-top: 2px;
+  }
+
+  /* ── ANALYTICS ── */
+  .section-title {
+    font-size: 11px;
+    letter-spacing: 0.15em;
+    color: rgba(245,245,240,0.35);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .analytics-tabs {
+    display: flex;
+    gap: 4px;
+    margin-bottom: 20px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+  }
+  .tab {
+    flex: 1;
+    padding: 7px 4px;
+    border-radius: 5px;
+    border: none;
+    background: none;
+    color: rgba(245,245,240,0.4);
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.05em;
+  }
+  .tab.active {
+    background: var(--azul);
+    color: var(--ouro);
+  }
+
+  .chart-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 20px;
+    margin-bottom: 40px;
+  }
+
+  .chart-bars {
+    display: flex;
+    align-items: flex-end;
+    gap: 6px;
+    height: 100px;
+    margin-bottom: 8px;
+  }
+  .bar-wrap {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+  }
+  .bar {
+    width: 100%;
+    border-radius: 4px 4px 0 0;
+    background: var(--azul);
+    transition: height 0.8s cubic-bezier(.4,0,.2,1);
+    min-height: 4px;
+    position: relative;
+  }
+  .bar.highlight { background: var(--ouro); }
+  .bar-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    color: rgba(245,245,240,0.3);
+    white-space: nowrap;
+  }
+
+  .analytics-summary {
+    display: grid;
+    grid-template-columns: repeat(4,1fr);
+    gap: 10px;
+    margin-bottom: 40px;
+  }
+  .summary-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    text-align: center;
+  }
+  .summary-num {
+    font-family: 'Space Mono', monospace;
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--ouro);
+  }
+  .summary-label {
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    color: rgba(245,245,240,0.35);
+    text-transform: uppercase;
+    margin-top: 4px;
+  }
+
+  /* ── CARONA ── */
+  .carona-section {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .carona-section::before {
+    content: '🚗';
+    position: absolute;
+    right: 24px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 64px;
+    opacity: 0.07;
+  }
+  .carona-badge {
+    display: inline-block;
+    background: rgba(0,51,160,0.3);
+    border: 1px solid rgba(0,51,160,0.5);
+    color: #6B9FFF;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    letter-spacing: 0.12em;
+    padding: 3px 8px;
+    border-radius: 999px;
+    margin-bottom: 12px;
+    text-transform: uppercase;
+  }
+  .carona-title {
+    font-size: 20px;
+    font-weight: 800;
+    margin-bottom: 8px;
+  }
+  .carona-desc {
+    font-size: 13px;
+    color: rgba(245,245,240,0.45);
+    line-height: 1.7;
+    margin-bottom: 20px;
+    max-width: 380px;
+  }
+  .btn-carona {
+    background: var(--azul);
+    color: var(--ouro);
+    border: none;
+    padding: 10px 22px;
+    border-radius: 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: opacity 0.2s;
+    letter-spacing: 0.06em;
+  }
+  .btn-carona:hover { opacity: 0.8; }
+
+  /* ── CARONA FORM ── */
+  .carona-form-wrap {
+    margin-top: 28px;
+    text-align: left;
+  }
+  .carona-form-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    color: rgba(245,245,240,0.4);
+    text-transform: uppercase;
+    margin-bottom: 12px;
+    font-family: 'Space Mono', monospace;
+  }
+  .carona-fields {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .carona-field { display: flex; flex-direction: column; gap: 5px; }
+  .carona-field-full { margin-bottom: 12px; }
+  .carona-field label {
+    font-size: 12px;
+    color: rgba(245,245,240,0.45);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.04em;
+  }
+  .carona-field input, .carona-field select {
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px;
+    color: var(--branco);
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: 'Syne', sans-serif;
+    outline: none;
+    transition: border-color 0.2s;
+    width: 100%;
+  }
+  .carona-field input::placeholder { color: rgba(245,245,240,0.2); }
+  .carona-field input:focus, .carona-field select:focus { border-color: var(--ouro); }
+  .carona-field select option { background: #1C1C1C; color: var(--branco); }
+  .carona-field select optgroup { background: #1C1C1C; color: rgba(245,245,240,0.4); }
+  .carona-hint {
+    font-size: 12px;
+    color: rgba(245,245,240,0.35);
+    line-height: 1.6;
+    margin-bottom: 14px;
+  }
+  .carona-cal-outer {
+    overflow-x: auto;
+    margin-bottom: 24px;
+    border-radius: 10px;
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .carona-cal-wrap {
+    min-width: 520px;
+  }
+  .carona-cal-head {
+    display: grid;
+    grid-template-columns: 80px repeat(5,1fr);
+    background: rgba(255,255,255,0.04);
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .carona-cal-head div {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.08em;
+    color: rgba(245,245,240,0.35);
+    padding: 8px 0;
+    text-align: center;
+  }
+  .carona-cal-row {
+    display: grid;
+    grid-template-columns: 80px repeat(5,1fr);
+    border-top: 1px solid rgba(255,255,255,0.06);
+  }
+  .carona-cal-label {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.06em;
+    color: rgba(245,245,240,0.35);
+    padding: 8px;
+    display: flex;
+    align-items: center;
+    background: rgba(255,255,255,0.03);
+    border-right: 1px solid rgba(255,255,255,0.06);
+  }
+  .carona-cal-cell {
+    padding: 4px;
+    border-left: 1px solid rgba(255,255,255,0.05);
+  }
+  .carona-cal-cell select {
+    width: 100%;
+    font-size: 10px;
+    padding: 5px 2px;
+    background: transparent;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 6px;
+    color: rgba(245,245,240,0.4);
+    font-family: 'Space Mono', monospace;
+    cursor: pointer;
+    outline: none;
+    text-align: center;
+    transition: background 0.15s, color 0.15s;
+  }
+  .carona-cal-cell select option { background: #1C1C1C; color: var(--branco); }
+  .carona-cal-cell select.cfilled {
+    background: rgba(255,209,0,0.12);
+    color: var(--ouro);
+    border-color: rgba(255,209,0,0.3);
+  }
+  .carona-disclaimer {
+    border: 1px solid rgba(255,209,0,0.2);
+    border-radius: 10px;
+    background: rgba(255,209,0,0.05);
+    padding: 16px 18px;
+    margin-bottom: 18px;
+  }
+  .carona-disclaimer-title {
+    font-size: 11px;
+    font-weight: 700;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.08em;
+    color: rgba(255,209,0,0.7);
+    margin-bottom: 8px;
+  }
+  .carona-disclaimer p {
+    font-size: 12px;
+    color: rgba(245,245,240,0.4);
+    line-height: 1.6;
+  }
+  .carona-disclaimer p+p { margin-top: 8px; }
+  .carona-check-row {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 18px;
+  }
+  .carona-check-row input[type=checkbox] { margin-top: 2px; flex-shrink: 0; accent-color: var(--ouro); }
+  .carona-check-row label {
+    font-size: 12px;
+    color: rgba(245,245,240,0.45);
+    line-height: 1.5;
+    cursor: pointer;
+  }
+  .btn-carona-submit {
+    width: 100%;
+    background: var(--ouro);
+    color: var(--preto);
+    border: none;
+    padding: 12px;
+    border-radius: 10px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-carona-submit:hover { opacity: 0.85; }
+  .btn-carona-submit:disabled { opacity: 0.3; cursor: not-allowed; }
+  .carona-success {
+    display: none;
+    text-align: center;
+    padding: 24px;
+    border: 1px solid rgba(0,193,124,0.3);
+    border-radius: 10px;
+    background: rgba(0,193,124,0.08);
+    color: var(--verde);
+    font-size: 14px;
+    line-height: 1.6;
+  }
+  @media (max-width: 500px) {
+    .carona-fields { grid-template-columns: 1fr; }
+    .carona-cal-head, .carona-cal-row { grid-template-columns: 60px repeat(5,1fr); }
+    .carona-cal-cell select { font-size: 9px; }
+    .logo-text { display: none; }
+    .btn-report { display: none; }
+  }
+
+
+  .ad-slot {
+    border: 1px dashed rgba(255,255,255,0.12);
+    border-radius: 10px;
+    padding: 24px;
+    text-align: center;
+    margin-bottom: 40px;
+    color: rgba(245,245,240,0.2);
+    font-size: 11px;
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.1em;
+  }
+  .ad-slot span { display: block; font-size: 9px; margin-top: 4px; opacity: 0.6; }
+
+  /* ── FOOTER ── */
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 20px;
+    text-align: center;
+    font-size: 11px;
+    color: rgba(245,245,240,0.2);
+    font-family: 'Space Mono', monospace;
+    letter-spacing: 0.08em;
+  }
+  footer a { color: rgba(245,245,240,0.35); text-decoration: none; }
+  footer a:hover { color: var(--ouro); }
+
+  /* ── TOAST ── */
+  .carona-nudge {
+    position: fixed;
+    bottom: 80px;
+    left: 50%;
+    transform: translateX(-50%) translateY(20px);
+    opacity: 0;
+    background: var(--ouro);
+    border: 2px solid rgba(255,255,255,0.3);
+    color: var(--preto);
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    padding: 14px 28px;
+    border-radius: 30px;
+    cursor: pointer;
+    transition: transform 0.4s cubic-bezier(.4,0,.2,1), opacity 0.4s ease, box-shadow 0.3s;
+    z-index: 999;
+    white-space: nowrap;
+    box-shadow: 0 6px 32px rgba(255,209,0,0.45);
+    pointer-events: none;
+    letter-spacing: 0.04em;
+    animation: none;
+  }
+  .carona-nudge.show {
+    transform: translateX(-50%) translateY(0);
+    opacity: 1;
+    pointer-events: auto;
+    animation: nudgePulse 2s infinite 0.5s;
+  }
+  @keyframes nudgePulse {
+    0%,100% { box-shadow: 0 6px 32px rgba(255,209,0,0.45); }
+    50%      { box-shadow: 0 6px 48px rgba(255,209,0,0.75); }
+  }
+
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background: var(--verde);
+    color: var(--preto);
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    font-weight: 700;
+    transform: translateY(60px);
+    opacity: 0;
+    transition: all 0.3s;
+    z-index: 999;
+    pointer-events: none;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── BOTÃO FLUTUANTE MOBILE ── */
+  .btn-report-float {
+    display: none;
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 150;
+    background: var(--ouro);
+    color: var(--preto);
+    border: none;
+    padding: 14px 32px;
+    border-radius: 999px;
+    font-family: 'Space Mono', monospace;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: 0.08em;
+    box-shadow: 0 8px 28px rgba(255,209,0,0.5);
+    animation: floatPulse 2s infinite;
+    white-space: nowrap;
+  }
+  @keyframes floatPulse {
+    0%,100% { box-shadow: 0 8px 28px rgba(255,209,0,0.5); }
+    50%      { box-shadow: 0 8px 40px rgba(255,209,0,0.8); }
+  }
+  .btn-report-float:hover { opacity: 0.9; animation: none; }
+  @media (max-width: 500px) {
+    .btn-report-float { display: flex; align-items: center; gap: 8px; }
+    .analytics-summary { grid-template-columns: repeat(2,1fr); }
+    .cards { grid-template-columns: repeat(2,1fr); }
+    .fila-stats { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <a class="logo" href="#">
+    <span class="logo-badge">PUC-RIO</span>
+    <span class="logo-text">PARKING</span>
+  </a>
+  <div class="header-right">
+    <span class="nav-link" onclick="scrollTo(0,999999)">analytics</span>
+    <span class="nav-link" id="caronaNav" onclick="document.getElementById('caronaSection').scrollIntoView({behavior:'smooth'})">carona</span>
+    <button class="btn-report" onclick="openModal()">
+      <span class="btn-report-icon">📍</span>
+      <span class="btn-report-inner">
+        REPORTAR STATUS
+        <span class="btn-report-sub">vi agora · ajude a comunidade</span>
+      </span>
+    </button>
+  </div>
+</header>
+
+<!-- MAIN -->
+<main>
+
+  <!-- HERO STATUS -->
+  <div class="hero">
+    <div class="status-ring">
+      <svg viewBox="0 0 180 180">
+        <circle class="ring-bg" cx="90" cy="90" r="80"/>
+        <circle class="ring-fill" id="ringFill" cx="90" cy="90" r="80" stroke-dashoffset="502"/>
+      </svg>
+      <div class="ring-label">
+        <div class="ring-pct" id="pctDisplay">—</div>
+        <div class="ring-sub">OCUPAÇÃO</div>
+      </div>
+    </div>
+
+    <div id="statusBadge" class="status-badge">
+      <div class="status-dot"></div>
+      <span id="statusText">CARREGANDO…</span>
+    </div>
+
+    <div class="hero-title" id="heroTitle">Verificando vagas…</div>
+    <div class="hero-sub">Estacionamento Rotativo · Gávea, Rio de Janeiro</div>
+  </div>
+
+  <!-- CARDS -->
+  <div class="cards">
+    <div class="card">
+      <div class="card-icon">🕐</div>
+      <div class="card-label">Último Report</div>
+      <div class="card-value" id="ultimoReport">—</div>
+      <div class="card-unit">horário</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🚗</div>
+      <div class="card-label">Tamanho Esperado da Fila</div>
+      <div class="card-value" id="filaEsperada">—</div>
+      <div class="card-unit">carros (se cheio)</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">⏱️</div>
+      <div class="card-label">Tempo de Fila Esperado</div>
+      <div class="card-value" id="tempoEsperado">—</div>
+      <div class="card-unit">minutos (se cheio)</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🅿️</div>
+      <div class="card-label">Média de Utilização Hoje</div>
+      <div class="card-value" id="mediaUtilizacaoHoje">—</div>
+      <div class="card-unit">% média do dia</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📈</div>
+      <div class="card-label">Tempo Médio de Fila Hoje</div>
+      <div class="card-value" id="tempoMedioHoje">—</div>
+      <div class="card-unit">minutos (média do dia)</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔥</div>
+      <div class="card-label">Pico Hoje</div>
+      <div class="card-value" id="picoHoje">—</div>
+      <div class="card-unit">% ocupação</div>
+    </div>
+    <div class="card">
+      <div class="card-icon">📊</div>
+      <div class="card-label">Reportes Hoje</div>
+      <div class="card-value" id="reportesHoje">—</div>
+      <div class="card-unit">da comunidade</div>
+    </div>
+  </div>
+
+  <!-- UPDATE BAR -->
+  <div class="update-bar">
+    <span>Última atualização: <span id="lastUpdate">—</span></span>
+    <button class="btn-refresh" id="refreshBtn" onclick="refreshData()">↻ ATUALIZAR</button>
+  </div>
+
+  <!-- FILA SECTION (only when full) -->
+  <div class="fila-section" id="filaSection">
+    <div class="fila-title">⚠ Estacionamento Cheio — Info da Fila</div>
+    <div class="fila-stats">
+      <div>
+        <div class="fila-stat-val" id="filaCarros">—</div>
+        <div class="fila-stat-label">carros na fila quando você chegou</div>
+      </div>
+      <div>
+        <div class="fila-stat-val" id="filaTempo">—</div>
+        <div class="fila-stat-label">min. estimados de espera</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- AD SLOT TOP -->
+  <!-- temvaga-topo -->
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-6134568859171847"
+       data-ad-slot="3896338000"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+
+  <!-- ANALYTICS -->
+  <div class="section-title">Visualizações do Site</div>
+
+  <div class="analytics-summary">
+    <div class="summary-card">
+      <div class="summary-num" id="viewsHora">—</div>
+      <div class="summary-label">Esta Hora</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-num" id="viewsDia">—</div>
+      <div class="summary-label">Hoje</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-num" id="viewsSemana">—</div>
+      <div class="summary-label">Esta Semana</div>
+    </div>
+    <div class="summary-card">
+      <div class="summary-num" id="viewsMes">—</div>
+      <div class="summary-label">Este Mês</div>
+    </div>
+  </div>
+
+  <div class="section-title">Ocupação ao Longo do Dia</div>
+
+  <div class="chart-container">
+    <div class="analytics-tabs">
+      <button class="tab active" onclick="switchTab(this,'hora')">HORA A HORA</button>
+      <button class="tab" onclick="switchTab(this,'dia')">POR DIA</button>
+      <button class="tab" onclick="switchTab(this,'semana')">SEMANAS</button>
+    </div>
+    <div class="chart-bars" id="chartBars"></div>
+    <div id="chartLabels" style="display:flex;gap:6px;"></div>
+  </div>
+
+  <!-- AD SLOT MIDDLE -->
+  <!-- temvaga-meio -->
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-6134568859171847"
+       data-ad-slot="9033114619"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+
+  <!-- CARONA SECTION -->
+  <div class="carona-section" id="caronaSection">
+    <div class="carona-title">Grupos de Carona 🚗</div>
+    <div class="carona-desc">
+      Conecte-se com colegas que fazem o mesmo trajeto. Divida combustível, reduza emissões e chegue mais tranquilo à PUC-Rio.<br>
+      Após validação da matrícula, você receberá por e-mail os links dos grupos de WhatsApp compatíveis com seu bairro e horário.
+    </div>
+
+    <div class="carona-form-wrap">
+
+      <div class="carona-form-section-title">Dados pessoais</div>
+      <div class="carona-fields">
+        <div class="carona-field"><label>Nome completo</label><input type="text" id="cNome" placeholder="Como aparece na matrícula"></div>
+        <div class="carona-field"><label>Matrícula</label><input type="text" id="cMat" placeholder="Ex: 2210123"></div>
+        <div class="carona-field"><label>E-mail institucional</label><input type="email" id="cEmail" placeholder="nome@aluno.puc-rio.br"></div>
+        <div class="carona-field"><label>Celular (WhatsApp)</label><input type="tel" id="cTel" placeholder="(21) 99999-9999"></div>
+      </div>
+
+      <div class="carona-field carona-field-full">
+        <label>Bairro / região de origem</label>
+        <select id="cBairro">
+          <option value="">Selecione...</option>
+          <optgroup label="Zona Sul">
+            <option>Botafogo</option><option>Catete / Glória</option><option>Flamengo / Laranjeiras</option>
+            <option>Humaitá</option><option>Ipanema / Leblon</option><option>Copacabana</option>
+            <option>Leme</option><option>Santa Teresa</option><option>Urca</option>
+          </optgroup>
+          <optgroup label="Zona Norte">
+            <option>Méier e arredores</option><option>Tijuca / Vila Isabel</option>
+            <option>Maracanã / São Cristóvão</option><option>Ramos / Penha</option>
+            <option>Ilha do Governador</option>
+          </optgroup>
+          <optgroup label="Zona Oeste">
+            <option>Barra da Tijuca</option><option>Recreio / Vargens</option>
+            <option>Jacarepaguá</option><option>Bangu / Campo Grande</option><option>Santa Cruz</option>
+          </optgroup>
+          <optgroup label="Centro e arredores">
+            <option>Centro / Lapa</option><option>Estácio / Rio Comprido</option>
+            <option>Madureira / Cascadura</option>
+          </optgroup>
+          <optgroup label="Outros municípios">
+            <option>Niterói / São Gonçalo</option><option>Nova Iguaçu / Baixada</option>
+          </optgroup>
+        </select>
+      </div>
+
+      <div class="carona-form-section-title" style="margin-top:24px;">Horários por dia da semana</div>
+      <p class="carona-hint">Selecione o turno de chegada e/ou saída para cada dia que você frequenta a PUC. Deixe em branco os dias que não vem.</p>
+
+      <div class="carona-cal-outer"><div class="carona-cal-wrap">
+        <div class="carona-cal-head">
+          <div></div>
+          <div>Seg</div><div>Ter</div><div>Qua</div><div>Qui</div><div>Sex</div>
+        </div>
+        <div class="carona-cal-row">
+          <div class="carona-cal-label">Chegada</div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>até 7h30</option><option>7h30–9h30</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option></select></div>
+        </div>
+        <div class="carona-cal-row">
+          <div class="carona-cal-label">Saída</div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+          <div class="carona-cal-cell"><select class="cturn" onchange="cMarkFilled(this)"><option value="">—</option><option>9h30–11h30</option><option>11h30–13h30</option><option>13h30–15h30</option><option>15h30–17h30</option><option>17h30–19h30</option><option>19h30–21h30</option></select></div>
+        </div>
+      </div>
+
+      <div class="carona-disclaimer">
+        <div class="carona-disclaimer-title">⚠ Aviso importante</div>
+        <p>Esta plataforma foi desenvolvida de forma independente por uma equipe da PUC-Rio, sem qualquer vínculo formal com a Pontifícia Universidade Católica do Rio de Janeiro ou com o serviço de estacionamento do campus. A PUC-Rio não tem qualquer responsabilidade sobre este serviço, seu conteúdo ou seu funcionamento.</p>
+        <p>A plataforma funciona exclusivamente como um quadro de avisos digital para aproximar alunos com perfis de deslocamento compatíveis. A organização das caronas, combinação de horários, rotas e eventuais custos é de responsabilidade exclusiva dos participantes. Os responsáveis por esta plataforma não intermediam, garantem nem se responsabilizam pelas caronas realizadas nem por quaisquer ocorrências durante os trajetos.</p>
+      </div>
+
+      <div class="carona-check-row">
+        <input type="checkbox" id="cAceite">
+        <label for="cAceite">Li e compreendi o aviso acima. Estou ciente de que esta plataforma não tem vínculo com a PUC-Rio e que a organização das caronas é de minha exclusiva responsabilidade.</label>
+      </div>
+
+      <div id="cFormArea">
+        <button class="btn-carona-submit" id="cSubmitBtn" disabled>ENVIAR CADASTRO →</button>
+        <p class="carona-hint" style="text-align:center;margin-top:12px;">Cadastro válido para o semestre 2026.1. Após validação da matrícula você receberá os links dos grupos de WhatsApp por e-mail.</p>
+      </div>
+    <div class="carona-success" id="cSuccess" style="display:none;">
+        <div style="font-size:22px;margin-bottom:10px;">✓</div>
+        <p><strong>Cadastro recebido!</strong><br>Sua matrícula será verificada em breve.<br>Você receberá os links dos grupos de WhatsApp no e-mail informado.</p>
+        <p style="margin-top:12px;font-size:12px;opacity:0.75;">Os grupos são formados assim que houver pelo menos 10 pessoas com perfil compatível de bairro e horário. Você será avisado por e-mail quando o grupo estiver pronto.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- AD SLOT BOTTOM -->
+  <!-- temvaga-topo -->
+  <ins class="adsbygoogle"
+       style="display:block"
+       data-ad-client="ca-pub-6134568859171847"
+       data-ad-slot="3896338000"
+       data-ad-format="auto"
+       data-full-width-responsive="true"></ins>
+  <script>
+       (adsbygoogle = window.adsbygoogle || []).push({});
+  </script>
+
+</main>
+
+<!-- BOTÃO FLUTUANTE MOBILE -->
+<button class="btn-report-float" onclick="openModal()">
+  📍 REPORTAR AGORA
+</button>
+
+<footer>
+  <p>PUC PARKING · feito pela comunidade · não oficial &nbsp;|&nbsp; <a href="mailto:temvagapucrio@gmail.com">temvagapucrio@gmail.com</a></p>
+</footer>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+<div class="carona-nudge" id="caronaNudge" onclick="nudgeGoToCarona()">
+  🚗 Já se cadastrou nos grupos de carona? &nbsp;→
+</div>
+
+<!-- REPORT MODAL -->
+<div class="modal-bg" id="modalBg">
+  <div class="modal">
+    <h2>Reportar Situação 🅿️</h2>
+    <p>Ajude a comunidade! Informe o que você viu agora no estacionamento. Seus dados são anônimos.</p>
+
+    <div class="field">
+      <label>Status do estacionamento</label>
+      <select id="reportStatus">
+        <option value="livre">✅ Tem vagas disponíveis</option>
+        <option value="quase">⚠️ Quase cheio</option>
+        <option value="cheio">🔴 Completamente cheio</option>
+      </select>
+    </div>
+
+    <div class="field" id="filaField" style="display:none;">
+      <label>Carros na fila (estimativa)</label>
+      <input type="range" id="reportFila" min="0" max="40" value="5" oninput="updateRange()">
+      <div class="range-val" id="rangeVal">5 carros</div>
+      <div class="range-display"><span>0</span><span>40+</span></div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">CANCELAR</button>
+      <button class="btn-submit" onclick="submitReport()">ENVIAR REPORTE ↗</button>
+    </div>
+  </div>
+</div>
+
+<!-- Funções globais de UI (fora do module para ficarem disponíveis imediatamente) -->
+<script>
+// ══════════════════════════════════════════════
+//  HORÁRIO DE FUNCIONAMENTO (escopo global)
+//  Seg–Sex: 05h–01h | Fim de semana: Sáb 01h → Seg 05h
+// ══════════════════════════════════════════════
+function isEstacionamentoClosed() {
+  const now = new Date();
+  const dow = now.getDay();
+  const h   = now.getHours();
+  if (dow === 6 && h >= 1) return true;
+  if (dow === 0)           return true;
+  if (dow === 1 && h < 5)  return true;
+  if (h >= 1 && h < 5)     return true;
+  return false;
+}
+window.isEstacionamentoClosed = isEstacionamentoClosed;
+
+function openModal() {
+  document.getElementById('modalBg').classList.add('open');
+  document.getElementById('reportStatus').onchange = function() {
+    document.getElementById('filaField').style.display = this.value === 'cheio' ? 'block' : 'none';
+  };
+}
+function closeModal() { document.getElementById('modalBg').classList.remove('open'); }
+function updateRange() {
+  document.getElementById('rangeVal').textContent = document.getElementById('reportFila').value + ' carros';
+}
+function switchTab(el, mode) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  if (window._switchTabModule) window._switchTabModule(el, mode);
+}
+function submitReport() {
+  if (window._submitReportModule) {
+    window._submitReportModule();
+  } else {
+    alert('Aguarde o carregamento do app e tente novamente.');
+  }
+}
+function refreshData() {
+  if (window._refreshDataModule) window._refreshDataModule();
+}
+function cMarkFilled(sel){ sel.classList.toggle('cfilled', sel.value !== ''); }
+function cToggleBtn(){
+  const checkbox = document.getElementById('cAceite');
+  const btn = document.getElementById('cSubmitBtn');
+  if (checkbox && btn) btn.disabled = !checkbox.checked;
+}
+async function cHandleSubmit(){
+  const nome   = document.getElementById('cNome').value.trim();
+  const mat    = document.getElementById('cMat').value.trim();
+  const email  = document.getElementById('cEmail').value.trim();
+  const tel    = document.getElementById('cTel').value.trim();
+  const bairro = document.getElementById('cBairro').value;
+  const turnos = {};
+  const dias   = ['seg','ter','qua','qui','sex'];
+  const tipos  = ['chegada','saida'];
+  document.querySelectorAll('.cturn').forEach((sel, i) => {
+    const dia  = dias[i % 5];
+    const tipo = tipos[Math.floor(i / 5)];
+    if(sel.value) turnos[dia + '_' + tipo] = sel.value;
+  });
+  const hasTurno = Object.keys(turnos).length > 0;
+  if(!nome||!mat||!email||!tel||!bairro){ alert('Por favor preencha todos os dados pessoais.'); return; }
+  if(!email.endsWith('@aluno.puc-rio.br')){ alert('Use seu e-mail institucional @aluno.puc-rio.br.'); return; }
+  const btn = document.getElementById('cSubmitBtn');
+  btn.textContent = 'ENVIANDO…';
+  btn.disabled = true;
+  try {
+    if (typeof window._firestoreAddCarona !== 'function') throw new Error('Firebase não carregado');
+    await window._firestoreAddCarona({ nome, matricula: mat, email, celular: tel, bairro, turnos, status: 'pendente', semestre: '2026.1', criadoEm: new Date().toISOString() });
+    document.getElementById('cFormArea').style.display = 'none';
+    document.getElementById('cSuccess').style.display = 'block';
+  } catch(e) {
+    console.error(e);
+    alert('Erro ao enviar. Verifique sua conexão e tente novamente.');
+    btn.textContent = 'ENVIAR CADASTRO →';
+    btn.disabled = false;
+  }
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  const aceite    = document.getElementById('cAceite');
+  const submitBtn = document.getElementById('cSubmitBtn');
+  if (aceite)     aceite.addEventListener('change', cToggleBtn);
+  if (submitBtn)  submitBtn.addEventListener('click', cHandleSubmit);
+
+  // Aplica fechado imediatamente, sem esperar Firebase
+  if (window.isEstacionamentoClosed()) {
+    const title = document.getElementById('heroTitle');
+    const txt   = document.getElementById('statusText');
+    const badge = document.getElementById('statusBadge');
+    const pct   = document.getElementById('pctDisplay');
+    if (title) title.textContent = 'Estacionamento fechado 🔒';
+    if (txt)   txt.textContent   = 'FECHADO';
+    if (badge) badge.className   = 'status-badge fechado';
+    if (pct)   pct.textContent   = '—';
+    const btnReport      = document.querySelector('.btn-report');
+    const btnReportFloat = document.querySelector('.btn-report-float');
+    if (btnReport)      { btnReport.disabled = true; btnReport.style.opacity = '0.35'; btnReport.style.pointerEvents = 'none'; }
+    if (btnReportFloat) { btnReportFloat.style.display = 'none'; }
+  }
+});
+</script>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import {
+  getFirestore, collection, addDoc, query, where,
+  orderBy, onSnapshot, Timestamp, getDocs,
+  doc, setDoc, getDoc, increment, serverTimestamp
+} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ══════════════════════════════════════════════
+//  ⚙️  FIREBASE CONFIG
+//  Substitua pelos seus dados do Firebase Console
+//  (console.firebase.google.com → seu projeto → ⚙️ → Web app)
+// ══════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyAWQJK5PzdWN6RP-JLsgqOVeuIJS39KDXo",
+  authDomain: "temvaga-puc-rio.firebaseapp.com",
+  projectId: "temvaga-puc-rio",
+  storageBucket: "temvaga-puc-rio.firebasestorage.app",
+  messagingSenderId: "67967248658",
+  appId: "1:67967248658:web:b742d20004e84ee491abcb",
+  measurementId: "G-XDER0PX4K6"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+// ══════════════════════════════════════════════
+//  GLOBALS
+// ══════════════════════════════════════════════
+const TOTAL_VAGAS = 180;
+let chartMode     = 'hora';
+let recentReports = [];   // mantido em memória pelo listener
+let reportesHojeCount = 0;
+let currentOcupacao   = null; // ocupação dinâmica, ajustada por reportes
+
+// ══════════════════════════════════════════════
+//  PAGE VIEW COUNTER  (Firestore: doc views/counters)
+// ══════════════════════════════════════════════
+async function trackPageView() {
+  const now    = new Date();
+  const dayKey = now.toISOString().slice(0,10);          // "2025-04-15"
+  const hrKey  = dayKey + 'H' + now.getHours();          // "2025-04-15H10"
+  const wkKey  = dayKey.slice(0,7) + 'W' +
+                 Math.min(3, Math.floor((now.getDate()-1)/7)); // "2025-04W1"
+  const moKey  = dayKey.slice(0,7);                       // "2025-04"
+
+  // Throttle: só conta 1x por hora por dispositivo (sessionStorage é local mas só dura a sessão)
+  const ssKey = 'pucpk_view_' + hrKey;
+  if (sessionStorage.getItem(ssKey)) return;
+  sessionStorage.setItem(ssKey, '1');
+
+  const ref = doc(db, 'views', 'counters');
+  await setDoc(ref, {
+    [hrKey]: increment(1),
+    [dayKey]: increment(1),
+    [wkKey]:  increment(1),
+    [moKey]:  increment(1),
+  }, { merge: true });
+
+  loadAndRenderViews();
+}
+
+// ══════════════════════════════════════════════
+//  ESTATÍSTICAS DO DIA (pico, tempo médio fila, média utilização)
+// ══════════════════════════════════════════════
+async function loadDayStats() {
+  try {
+    const startOfDay = new Date(); startOfDay.setHours(0,0,0,0);
+    const cutoffDay  = Timestamp.fromMillis(startOfDay.getTime());
+    const snap = await getDocs(query(
+      collection(db, 'reports'),
+      where('ts', '>=', cutoffDay),
+      orderBy('ts', 'asc')
+    ));
+    const docs = snap.docs.map(d => d.data());
+
+    if (!docs.length) return;
+
+    // Pico: maior ocupação do dia
+    const pico = Math.max(...docs.map(d => d.ocupacao ?? 0));
+    document.getElementById('picoHoje').textContent = pico;
+
+    // Média de utilização: média das ocupações registradas no dia
+    const mediaUtil = Math.round(docs.reduce((s, d) => s + (d.ocupacao ?? 0), 0) / docs.length);
+    document.getElementById('mediaUtilizacaoHoje').textContent = mediaUtil + '%';
+
+    // Tempo médio de fila do dia: considera todos os reports — cheio contribui com tempo real, demais contribuem com 0
+    const totalTempo = docs.reduce((s, d) => {
+      const t = (d.ocupacao ?? 0) >= 100 ? Math.round((d.fila || 0) * 1.3) : 0;
+      return s + t;
+    }, 0);
+    const mediaTempo = docs.length ? Math.round(totalTempo / docs.length) : 0;
+    document.getElementById('tempoMedioHoje').textContent = mediaTempo;
+
+    // ✅ Total de reportes do dia — calculado aqui pois loadDayStats busca desde meia-noite
+    reportesHojeCount = docs.length;
+    document.getElementById('reportesHoje').textContent = reportesHojeCount || '—';
+  } catch(e) { console.warn('loadDayStats err', e); }
+}
+
+async function loadAndRenderViews() {
+  const now    = new Date();
+  const dayKey = now.toISOString().slice(0,10);
+  const hrKey  = dayKey + 'H' + now.getHours();
+  const wkKey  = dayKey.slice(0,7) + 'W' +
+                 Math.min(3, Math.floor((now.getDate()-1)/7));
+  const moKey  = dayKey.slice(0,7);
+
+  try {
+    const snap = await getDoc(doc(db, 'views', 'counters'));
+    const d    = snap.exists() ? snap.data() : {};
+    document.getElementById('viewsHora').textContent   = d[hrKey]  || 0;
+    document.getElementById('viewsDia').textContent    = d[dayKey] || 0;
+    document.getElementById('viewsSemana').textContent = d[wkKey]  || 0;
+    document.getElementById('viewsMes').textContent    = d[moKey]  || 0;
+  } catch(e) { console.warn('views load err', e); }
+}
+
+// ══════════════════════════════════════════════
+//  REPORTS — real-time listener (últimos 30 min)
+// ══════════════════════════════════════════════
+function startReportsListener() {
+  const cutoff = Timestamp.fromMillis(Date.now() - 30 * 60 * 1000);
+  const q = query(
+     collection(db, 'reports'),
+     where('ts', '>=', cutoff),
+     orderBy('ts', 'desc')
+     );
+
+  onSnapshot(q, snap => {
+    recentReports = snap.docs.map(d => ({ id: d.id, ...d.data(), tsMs: d.data().ts.toMillis() }));
+
+    // Atualiza ocupação apenas se houver reportes recentes (últimos 30 min)
+    // Se não houver, mantém o valor restaurado por restoreOcupacaoDoDia
+    if (recentReports.length > 0 && recentReports[0].ocupacao != null) {
+      currentOcupacao = recentReports[0].ocupacao;
+    }
+
+    const s = computeStatus(); // já respeita isEstacionamentoClosed()
+    applyStatus(s);
+    if (s.status !== 'fechado') {
+      loadDayStats();
+      renderChart(chartMode);
+    }
+  }, err => {
+    console.warn('listener err', err);
+    applyStatus(fakeStatus());
+  });
+}
+
+// ══════════════════════════════════════════════
+//  OCUPAÇÃO DINÂMICA — ajustada pelos reportes
+// ══════════════════════════════════════════════
+// currentOcupacao já declarado acima nos GLOBALS
+
+function computeStatus() {
+  if (window.isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
+
+  // Sem reportes ainda: começa o dia em 0%
+  if (currentOcupacao === null) currentOcupacao = 0;
+
+  // Status derivado da ocupação
+  const status = currentOcupacao >= 100 ? 'cheio'
+    : currentOcupacao >= 90 ? 'quase3'
+    : currentOcupacao >= 80 ? 'quase2'
+    : currentOcupacao >= 50 ? 'quase1'
+    : 'livre';
+
+  const cheioDocs = recentReports.filter(r => r.status === 'cheio');
+  const avgFila   = cheioDocs.length
+    ? cheioDocs.reduce((s, r) => s + (r.fila || 0), 0) / cheioDocs.length
+    : 0;
+
+  return { status, ocupacao: currentOcupacao, fila: Math.round(avgFila), reportes: recentReports.length };
+}
+
+// ══════════════════════════════════════════════
+//  HORÁRIO DE FUNCIONAMENTO — movida para script global
+// ══════════════════════════════════════════════
+
+function fakeStatus() {
+  if (window.isEstacionamentoClosed()) return { status: 'fechado', ocupacao: 0, fila: 0, reportes: 0 };
+  // Sem estimativas por horário — começa o dia em 0%
+  return { status: 'livre', ocupacao: 0, fila: 0, reportes: 0 };
+}
+
+function applyStatus(s) {
+  const pct    = s.ocupacao;
+  const livres = Math.round(TOTAL_VAGAS * (1 - pct/100));
+
+  // Ring
+  const offset = 502 * (1 - pct/100);
+  const ring   = document.getElementById('ringFill');
+  ring.style.strokeDashoffset = offset;
+  ring.style.stroke = s.status === 'cheio' ? 'var(--vermelho)'
+    : s.status === 'quase3' ? 'var(--laranja3)'
+    : s.status === 'quase2' ? 'var(--laranja2)'
+    : s.status === 'quase1' ? 'var(--laranja1)'
+    : 'var(--verde)';
+
+  // Ring label: texto da faixa em vez do percentual
+  const labelTexts = {
+    fechado: '—',
+    livre:   'Baixa',
+    quase1:  'Moderada',
+    quase2:  'Alta',
+    quase3:  'Quase\nCheia',
+    cheio:   'Lotado'
+  };
+  const ringLabel = document.getElementById('pctDisplay');
+  ringLabel.style.whiteSpace = 'pre-line';
+  ringLabel.textContent = labelTexts[s.status] ?? '—';
+  // Cor do texto acompanha a cor do anel
+  ringLabel.style.color = s.status === 'cheio'  ? 'var(--vermelho)'
+    : s.status === 'quase3' ? 'var(--laranja3)'
+    : s.status === 'quase2' ? 'var(--laranja2)'
+    : s.status === 'quase1' ? 'var(--laranja1)'
+    : s.status === 'livre'  ? 'var(--verde)'
+    : '#888';
+
+  document.getElementById('reportesHoje').textContent   = reportesHojeCount || (recentReports.length || '—');
+
+  // Último report: HH:MM do reporte mais recente
+  if (recentReports.length > 0) {
+    const tsMs = recentReports[0].tsMs;
+    const d = new Date(tsMs);
+    document.getElementById('ultimoReport').textContent =
+      d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+  }
+
+  // Pico hoje: maior ocupação registrada no dia (atualizado via loadDayStats)
+  // (não sobrescrevemos aqui — é atualizado por loadDayStats)
+
+  // Tempo de Fila Esperado e Tamanho Esperado: só quando cheio (100%)
+  const eFila  = pct >= 100 ? s.fila  : 0;
+  const eTempo = pct >= 100 ? Math.round(s.fila * 1.3) : 0;
+  document.getElementById('filaEsperada').textContent  = pct >= 100 ? eFila  : 0;
+  document.getElementById('tempoEsperado').textContent = pct >= 100 ? eTempo : 0;
+
+  document.getElementById('lastUpdate').textContent  = new Date().toLocaleTimeString('pt-BR');
+
+  const badge = document.getElementById('statusBadge');
+  const txt   = document.getElementById('statusText');
+  const title = document.getElementById('heroTitle');
+  badge.className = 'status-badge ' + s.status;
+
+  // Botão de report: desabilita quando fechado (formulário de carona não é afetado)
+  const btnReport      = document.querySelector('.btn-report');
+  const btnReportFloat = document.querySelector('.btn-report-float');
+  const isClosed = s.status === 'fechado';
+  if (btnReport) {
+    btnReport.disabled           = isClosed;
+    btnReport.style.opacity      = isClosed ? '0.35' : '1';
+    btnReport.style.cursor       = isClosed ? 'not-allowed' : 'pointer';
+    btnReport.style.pointerEvents = isClosed ? 'none' : '';
+  }
+  if (btnReportFloat) {
+    btnReportFloat.style.display = isClosed ? 'none' : '';
+  }
+
+  if (s.status === 'fechado') {
+    ring.style.stroke = '#444';
+    document.getElementById('pctDisplay').textContent = '—';
+    document.getElementById('pctDisplay').style.color = '#888';
+    txt.textContent   = 'FECHADO';
+    title.textContent = 'Estacionamento fechado 🔒';
+    document.getElementById('filaSection')?.classList.remove('visible');
+    return;
+  }
+
+  if (s.status === 'livre') {
+    txt.textContent   = 'OCUPAÇÃO BAIXA';
+    title.textContent = 'Ocupação Baixa — tem vaga! ✅';
+  } else if (s.status === 'quase1') {
+    txt.textContent   = 'OCUPAÇÃO MODERADA';
+    title.textContent = 'Ocupação Moderada — ainda há vagas ⚠️';
+  } else if (s.status === 'quase2') {
+    txt.textContent   = 'OCUPAÇÃO ALTA';
+    title.textContent = 'Ocupação Alta — poucas vagas restantes ⚠️';
+  } else if (s.status === 'quase3') {
+    txt.textContent   = 'QUASE CHEIO';
+    title.textContent = 'Quase cheio — vagas muito escassas 🟠';
+  } else {
+    txt.textContent   = 'LOTADO';
+    title.textContent = 'Lotado — estacionamento cheio, há fila 🔴';
+  }
+
+  const filaEl = document.getElementById('filaSection');
+  if (s.status === 'cheio') {
+    filaEl.classList.add('visible');
+    const filaCarros = s.fila || Math.floor(5+Math.random()*10);
+    document.getElementById('filaCarros').textContent = filaCarros;
+    document.getElementById('filaTempo').textContent  = Math.round(filaCarros * 1.3);
+  } else {
+    filaEl.classList.remove('visible');
+  }
+}
+
+// ══════════════════════════════════════════════
+//  CHART (ocupação por hora, baseado em reportes reais do Firestore)
+// ══════════════════════════════════════════════
+async function renderChart(mode) {
+  const container = document.getElementById('chartBars');
+  const labelsEl  = document.getElementById('chartLabels');
+  container.innerHTML = '';
+  labelsEl.innerHTML  = '';
+
+  let data, labs;
+
+  if (mode === 'hora') {
+    const h = new Date().getHours();
+    labs = Array.from({length:12}, (_,i) => ((h - 11 + i + 24) % 24) + 'h');
+
+    // Tenta pegar dados reais do Firestore das últimas 12h
+    try {
+      const cutoff12 = Timestamp.fromMillis(Date.now() - 12 * 60 * 60 * 1000);
+      const snap = await getDocs(query(
+        collection(db, 'reports'),
+        where('ts', '>=', cutoff12),
+        orderBy('ts', 'asc')
+      ));
+      const byHr = {};
+      snap.docs.forEach(d => {
+        const hh = new Date(d.data().ts.toMillis()).getHours();
+        if (!byHr[hh]) byHr[hh] = { cheio:0, quase:0, livre:0, total:0 };
+        byHr[hh][d.data().status]++;
+        byHr[hh].total++;
+      });
+      data = labs.map(l => {
+        const hh = parseInt(l);
+        const b  = byHr[hh];
+        if (!b || !b.total) return 0; // sem reporte nessa hora = 0
+        return Math.round((b.cheio * 100 + b.quase * 80 + b.livre * 30) / b.total);
+      });
+    } catch { data = labs.map(() => 0); }
+
+  } else if (mode === 'dia') {
+    labs = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
+    data = labs.map(() => Math.floor(20+Math.random()*80));
+  } else {
+    labs = ['Sem 1','Sem 2','Sem 3','Sem 4'];
+    data = labs.map(() => Math.floor(30+Math.random()*70));
+  }
+
+  const max  = Math.max(...data, 1);
+  const curH = new Date().getHours();
+
+  data.forEach((val, i) => {
+    const wrap = document.createElement('div');
+    wrap.className = 'bar-wrap';
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    if (mode === 'hora' && parseInt(labs[i]) === curH) bar.classList.add('highlight');
+    bar.style.height = '0px';
+    wrap.appendChild(bar);
+    container.appendChild(wrap);
+
+    const lbl = document.createElement('div');
+    lbl.style.cssText = 'flex:1;text-align:center;font-size:9px;color:rgba(245,245,240,0.25);font-family:"Space Mono",monospace;';
+    lbl.textContent = labs[i];
+    labelsEl.appendChild(lbl);
+
+    setTimeout(() => { bar.style.height = (val / max * 90) + 'px'; }, 50 + i*30);
+  });
+}
+
+function fakeHourOccupancy(h) {
+  const base = [5,5,5,5,5,5,5,25,60,85,95,98,98,90,75,65,55,50,40,35,25,15,10,5];
+  return base[h] + Math.floor((Math.random()-0.5)*12);
+}
+
+function switchTabInternal(el, mode) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  chartMode = mode;
+  renderChart(mode);
+}
+window.switchTab = switchTabInternal; // fallback direto também
+
+// ══════════════════════════════════════════════
+//  MODAL & REPORT SUBMIT
+// ══════════════════════════════════════════════
+
+async function submitReport() {
+  const status = document.getElementById('reportStatus').value;
+  const fila   = parseInt(document.getElementById('reportFila').value) || 0;
+
+  // ── Ajusta ocupação dinamicamente ANTES de salvar ──
+  const h = new Date().getHours();
+  const isTarde = h >= 12; // tarde = após 12h
+
+  if (currentOcupacao === null) currentOcupacao = 0;
+
+  if (status === 'livre') {
+    if (isTarde) {
+      // Tarde (após 12h): cada reporte "tem vagas" diminui 10%, mínimo 0%
+      currentOcupacao = Math.max(0, currentOcupacao - 10);
+    } else {
+      // Manhã (antes de 12h): cada reporte "tem vagas" aumenta 5%, máximo 90%
+      currentOcupacao = Math.min(90, currentOcupacao + 5);
+    }
+  } else if (status === 'quase') {
+    // "Quase cheio" → fixa em 90%
+    currentOcupacao = 90;
+  } else if (status === 'cheio') {
+    currentOcupacao = 100;
+  }
+  currentOcupacao = Math.round(currentOcupacao * 10) / 10; // arredonda a 1 decimal
+
+  try {
+    await addDoc(collection(db, 'reports'), {
+      status,
+      fila,
+      ocupacao: currentOcupacao,
+      ts: Timestamp.now()
+    });
+
+    // Fecha modal e avisa
+    document.getElementById('modalBg').classList.remove('open');
+    showToast('✅ Reporte enviado! Obrigado!');
+    setTimeout(() => showCaronaNudge(), 3500);
+
+    // Atualiza o status imediatamente com a nova ocupação
+    const newStatusLabel = currentOcupacao >= 100 ? 'cheio'
+      : currentOcupacao >= 90 ? 'quase3'
+      : currentOcupacao >= 80 ? 'quase2'
+      : currentOcupacao >= 50 ? 'quase1'
+      : 'livre';
+    applyStatus({ status: newStatusLabel, ocupacao: currentOcupacao, fila });
+    renderChart(chartMode);
+  } catch(e) {
+    console.error('submitReport err', e);
+    showToast('❌ Erro ao enviar. Verifique a conexão.');
+  }
+}
+
+function nudgeGoToCarona() {
+  document.getElementById('caronaNudge').classList.remove('show');
+  const section = document.getElementById('caronaSection');
+  if (section) section.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+window.nudgeGoToCarona = nudgeGoToCarona;
+
+
+// ══════════════════════════════════════════════
+//  REFRESH BUTTON
+// ══════════════════════════════════════════════
+function refreshData() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('spinning');
+  loadAndRenderViews();
+  setTimeout(() => {
+    btn.classList.remove('spinning');
+    // Usa computeStatus que preserva currentOcupacao já ajustado pelos reportes
+    applyStatus(computeStatus());
+    loadDayStats();
+    renderChart(chartMode);
+  }, 700);
+}
+
+// ══════════════════════════════════════════════
+//  TOAST
+// ══════════════════════════════════════════════
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function showCaronaNudge() {
+  const nudge = document.getElementById('caronaNudge');
+  if (!nudge) return;
+  nudge.classList.add('show');
+  setTimeout(() => nudge.classList.remove('show'), 5000);
+}
+
+// ══════════════════════════════════════════════
+//  CARONA — FIRESTORE
+// ══════════════════════════════════════════════
+async function firestoreAddCarona(data) {
+  await addDoc(collection(db, 'cadastros_carona'), data);
+}
+
+async function firestoreGetCaronas(status) {
+  // Busca todos e filtra no cliente — evita necessidade de índice composto
+  const snap = await getDocs(collection(db, 'cadastros_carona'));
+  const all = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  const filtered = status === 'todos' ? all : all.filter(d => d.status === status);
+  return filtered.sort((a, b) => (b.criadoEm || '').localeCompare(a.criadoEm || ''));
+}
+
+async function firestoreGetGrupos() {
+  const snap = await getDocs(collection(db, 'grupos_carona'));
+  const map = {};
+  snap.docs.forEach(d => { map[d.id] = d.data(); });
+  return map;
+}
+
+async function firestoreSaveGrupo(key, link) {
+  await setDoc(doc(db, 'grupos_carona', key), { link }, { merge: true });
+}
+
+async function firestoreGetContadores() {
+  const snap = await getDocs(collection(db, 'cadastros_carona'));
+  const contadores = {};
+  snap.docs.forEach(d => {
+    const data = d.data();
+    const bairro = data.bairro || '';
+    const turnos = data.turnos || {};
+    Object.entries(turnos).forEach(([diatipo, turno]) => {
+      const key = `${bairro}||${diatipo}||${turno}`;
+      contadores[key] = (contadores[key] || 0) + 1;
+    });
+  });
+  return contadores;
+}
+
+async function firestoreUpdateCarona(id, status) {
+  await setDoc(doc(db, 'cadastros_carona', id), { status }, { merge: true });
+  if (status === 'aprovado') {
+    // Busca dados do aluno
+    const snap = await getDoc(doc(db, 'cadastros_carona', id));
+    const data = snap.data();
+    // Busca grupos cadastrados
+    const grupos = await firestoreGetGrupos();
+    // Monta links para os turnos do aluno
+    const dias = ['seg','ter','qua','qui','sex'];
+    const nomeDia = {seg:'Segunda',ter:'Terça',qua:'Quarta',qui:'Quinta',sex:'Sexta'};
+    const turnos = data.turnos || {};
+    let linhasLinks = [];
+    dias.forEach(dia => {
+      ['chegada','saida'].forEach(tipo => {
+        const turno = turnos[`${dia}_${tipo}`];
+        if (!turno) return;
+        const key = `${data.bairro}||${dia}_${tipo}||${turno}`;
+        const link = grupos[key]?.link;
+        const label = `${nomeDia[dia]} · ${tipo === 'chegada' ? 'Chegada' : 'Saída'} ${turno} · ${data.bairro}`;
+        linhasLinks.push(link ? `${label}: ${link}` : `${label}: grupo em formação`);
+      });
+    });
+    const linksText = linhasLinks.length ? linhasLinks.join('\n') : 'Grupos em formação — você será avisado em breve.';
+    // Dispara e-mail via EmailJS
+    await window._sendCaronaEmail({ nome: data.nome, email: data.email, links: linksText });
+  }
+}
+
+window._firestoreAddCarona     = firestoreAddCarona;
+window._firestoreGetCaronas    = firestoreGetCaronas;
+window._firestoreUpdateCarona  = firestoreUpdateCarona;
+window._firestoreGetGrupos     = firestoreGetGrupos;
+window._firestoreSaveGrupo     = firestoreSaveGrupo;
+window._firestoreGetContadores = firestoreGetContadores;
+
+
+window._submitReportModule = submitReport;
+window._refreshDataModule  = refreshData;
+window._switchTabModule    = switchTabInternal;
+window._showToast          = showToast;
+// Expõe diretamente também para robustez máxima
+window.submitReport   = submitReport;
+window.refreshData    = refreshData;
+window.switchTab      = switchTabInternal;
+
+// ══════════════════════════════════════════════
+//  RESTAURA OCUPAÇÃO DO DIA (desde meia-noite)
+//  Evita zerar ao recarregar por falta de reporte recente
+// ══════════════════════════════════════════════
+async function restoreOcupacaoDoDia() {
+  try {
+    const startOfDay = new Date(); startOfDay.setHours(0, 0, 0, 0);
+    const cutoff = Timestamp.fromMillis(startOfDay.getTime());
+    const snap = await getDocs(query(
+      collection(db, 'reports'),
+      where('ts', '>=', cutoff),
+      orderBy('ts', 'desc')
+    ));
+    if (!snap.empty) {
+      const ultimo = snap.docs[0].data();
+      if (ultimo.ocupacao != null) {
+        currentOcupacao = ultimo.ocupacao;
+      }
+      // Exibe o horario do ultimo reporte do dia imediatamente
+      const tsMs = snap.docs[0].data().ts.toMillis();
+      const d = new Date(tsMs);
+      document.getElementById('ultimoReport').textContent =
+        d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+    // Se nao houver nenhum reporte hoje, currentOcupacao permanece 0
+  } catch(e) {
+    console.warn('restoreOcupacaoDoDia err', e);
+  }
+}
+
+// ══════════════════════════════════════════════
+//  INIT
+// ══════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', async () => {
+  // Mostra 0% enquanto carrega
+  currentOcupacao = 0;
+  applyStatus({ status: 'livre', ocupacao: 0, fila: 0, reportes: 0 });
+  trackPageView();
+  loadAndRenderViews();
+
+  // Restaura o ultimo valor do dia ANTES de iniciar o listener
+  // Assim reloads e reconexoes nao zeram a ocupacao
+  await restoreOcupacaoDoDia();
+
+  startReportsListener();
+  if (!window.isEstacionamentoClosed()) {
+    loadDayStats();
+    renderChart(chartMode);
+  }
+
+  setInterval(loadAndRenderViews, 5 * 60 * 1000);
+  setInterval(loadDayStats, 5 * 60 * 1000);
+});
+</script>
+
+<!-- EmailJS -->
+<script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+<script>
+(function(){ emailjs.init({ publicKey: 'ofCjNwWEPTZ9RLBJQ' }); })();
+window._sendCaronaEmail = async function({ nome, email, links }) {
+  await emailjs.send('service_rh0y0me', 'template_zfu9d3m', { nome, links, to_email: email });
+};
+</script>
+
+<!-- ADMIN PAGE (oculta — acessível via #admin) -->
+<div id="adminOverlay" style="display:none;position:fixed;inset:0;z-index:9999;background:#0A0A0A;overflow-y:auto;">
+
+  <!-- LOGIN -->
+  <div id="adminLogin" style="display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;">
+    <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.3);margin-bottom:8px;">PUC PARKING · ADMIN</div>
+    <input id="adminUser" type="text" placeholder="usuário" style="width:260px;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#F5F5F0;font-family:'Syne',sans-serif;font-size:14px;outline:none;">
+    <input id="adminPass" type="password" placeholder="senha" style="width:260px;padding:10px 14px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.12);border-radius:8px;color:#F5F5F0;font-family:'Syne',sans-serif;font-size:14px;outline:none;" onkeydown="if(event.key==='Enter')adminLogin()">
+    <button onclick="adminLogin()" style="width:260px;padding:10px;background:#FFD100;color:#0A0A0A;border:none;border-radius:8px;font-family:'Space Mono',monospace;font-size:13px;font-weight:700;letter-spacing:.08em;cursor:pointer;">ENTRAR</button>
+    <div id="adminLoginErr" style="font-size:12px;color:#FF3B3B;display:none;">Usuário ou senha incorretos.</div>
+    <button onclick="closeAdmin()" style="margin-top:8px;background:none;border:none;color:rgba(255,255,255,.25);font-size:12px;cursor:pointer;font-family:'Space Mono',monospace;">✕ fechar</button>
+  </div>
+
+  <!-- PAINEL -->
+  <div id="adminPanel" style="display:none;max-width:900px;margin:0 auto;padding:40px 20px 80px;">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.12em;color:rgba(255,255,255,.3);">PUC PARKING · ADMIN</div>
+        <div style="font-family:'Syne',sans-serif;font-size:22px;font-weight:800;color:#F5F5F0;margin-top:4px;" id="adminPanelTitle">Cadastros de Carona</div>
+      </div>
+      <button onclick="closeAdmin()" style="background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);color:rgba(255,255,255,.5);padding:8px 16px;border-radius:8px;font-family:'Space Mono',monospace;font-size:11px;cursor:pointer;">✕ SAIR</button>
+    </div>
+
+    <!-- ABAS PRINCIPAIS -->
+    <div style="display:flex;gap:8px;margin-bottom:28px;">
+      <button class="admin-tab-btn active" id="tabBtnCadastros" onclick="adminSwitchTab('cadastros',this)">CADASTROS</button>
+      <button class="admin-tab-btn" id="tabBtnGrupos" onclick="adminSwitchTab('grupos',this)">GRUPOS & LINKS</button>
+    </div>
+
+    <!-- ABA CADASTROS -->
+    <div id="adminTabCadastros">
+      <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;">
+        <button class="admin-filter-btn active" onclick="adminSetFilter('pendente',this)">PENDENTES</button>
+        <button class="admin-filter-btn" onclick="adminSetFilter('aprovado',this)">APROVADOS</button>
+        <button class="admin-filter-btn" onclick="adminSetFilter('rejeitado',this)">REJEITADOS</button>
+        <button class="admin-filter-btn" onclick="adminSetFilter('todos',this)">TODOS</button>
+      </div>
+      <div id="adminCount" style="font-size:12px;color:rgba(255,255,255,.3);font-family:'Space Mono',monospace;margin-bottom:16px;"></div>
+      <div id="adminList"></div>
+    </div>
+
+    <!-- ABA GRUPOS -->
+    <div id="adminTabGrupos" style="display:none;">
+      <p style="font-size:12px;color:rgba(255,255,255,.35);margin-bottom:20px;line-height:1.6;">Grupos ordenados por número de solicitações. Cole o link do WhatsApp e salve. Combinações sem solicitações não aparecem.</p>
+      <div id="adminGruposList"></div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .admin-tab-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.4);
+    padding: 8px 20px;
+    border-radius: 8px;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: .08em;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .admin-tab-btn.active { background: rgba(255,209,0,.15); border-color: rgba(255,209,0,.4); color: #FFD100; }
+  .admin-grupo-card {
+    background: #1E1E1E;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 10px;
+    padding: 14px 18px;
+    margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex-wrap: wrap;
+  }
+  .admin-grupo-badge {
+    background: rgba(255,209,0,.12);
+    border: 1px solid rgba(255,209,0,.25);
+    color: #FFD100;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .admin-grupo-label { font-size: 13px; color: #F5F5F0; flex: 1; min-width: 180px; }
+  .admin-grupo-input {
+    flex: 2;
+    min-width: 220px;
+    padding: 8px 12px;
+    background: rgba(255,255,255,.05);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: 7px;
+    color: #F5F5F0;
+    font-size: 12px;
+    font-family: 'Syne', sans-serif;
+    outline: none;
+  }
+  .admin-grupo-input:focus { border-color: rgba(255,209,0,.4); }
+  .admin-grupo-input.saved { border-color: rgba(0,193,124,.4); background: rgba(0,193,124,.07); }
+  .btn-salvar-grupo {
+    background: rgba(255,209,0,.15);
+    border: 1px solid rgba(255,209,0,.3);
+    color: #FFD100;
+    padding: 7px 14px;
+    border-radius: 7px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    font-weight: 700;
+    cursor: pointer;
+    letter-spacing: .06em;
+    white-space: nowrap;
+    transition: opacity .15s;
+  }
+  .btn-salvar-grupo:hover { opacity: .8; }
+
+  .admin-filter-btn {
+    background: rgba(255,255,255,.06);
+    border: 1px solid rgba(255,255,255,.1);
+    color: rgba(255,255,255,.4);
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: .08em;
+    cursor: pointer;
+    transition: all .15s;
+  }
+  .admin-filter-btn.active { background: rgba(255,209,0,.15); border-color: rgba(255,209,0,.4); color: #FFD100; }
+  .admin-card {
+    background: #1E1E1E;
+    border: 1px solid rgba(255,255,255,.08);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 12px;
+  }
+  .admin-card-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+  .admin-card-name { font-size:15px; font-weight:700; color:#F5F5F0; }
+  .admin-card-mat { font-size:11px; color:rgba(255,255,255,.35); font-family:'Space Mono',monospace; margin-top:2px; }
+  .admin-card-info { font-size:12px; color:rgba(255,255,255,.45); line-height:1.8; margin-bottom:12px; }
+  .admin-card-turnos { display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px; }
+  .admin-turno-tag { font-size:10px; font-family:'Space Mono',monospace; padding:3px 8px; border-radius:4px; background:rgba(255,255,255,.07); color:rgba(255,255,255,.4); }
+  .admin-card-actions { display:flex; gap:8px; }
+  .btn-aprovar { background: rgba(0,193,124,.15); border: 1px solid rgba(0,193,124,.3); color: #00C17C; padding:7px 16px; border-radius:7px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.06em; transition:opacity .15s; }
+  .btn-aprovar:hover { opacity:.8; }
+  .btn-rejeitar { background: rgba(255,59,59,.1); border: 1px solid rgba(255,59,59,.25); color: #FF3B3B; padding:7px 16px; border-radius:7px; font-family:'Space Mono',monospace; font-size:11px; font-weight:700; cursor:pointer; letter-spacing:.06em; transition:opacity .15s; }
+  .btn-rejeitar:hover { opacity:.8; }
+  .status-pill { font-size:10px; font-family:'Space Mono',monospace; padding:3px 10px; border-radius:20px; font-weight:700; letter-spacing:.06em; }
+  .status-pill.pendente { background:rgba(255,209,0,.12); color:#FFD100; }
+  .status-pill.aprovado { background:rgba(0,193,124,.12); color:#00C17C; }
+  .status-pill.rejeitado { background:rgba(255,59,59,.12); color:#FF3B3B; }
+</style>
+
+<script>
+const ADMIN_USER = 'admin';
+const ADMIN_PASS = 'venture1305!';
+let adminFilterStatus = 'pendente';
+let adminAuthed = false;
+
+function checkAdminHash() {
+  if (window.location.hash === '#admin') {
+    document.getElementById('adminOverlay').style.display = 'block';
+    document.body.style.overflow = 'hidden';
+  }
+}
+window.addEventListener('hashchange', checkAdminHash);
+window.addEventListener('load', checkAdminHash);
+
+function closeAdmin() {
+  document.getElementById('adminOverlay').style.display = 'none';
+  document.body.style.overflow = '';
+  history.replaceState(null, '', window.location.pathname);
+  adminAuthed = false;
+  document.getElementById('adminPanel').style.display = 'none';
+  document.getElementById('adminLogin').style.display = 'flex';
+  document.getElementById('adminUser').value = '';
+  document.getElementById('adminPass').value = '';
+}
+
+function adminLogin() {
+  const u = document.getElementById('adminUser').value.trim();
+  const p = document.getElementById('adminPass').value;
+  if (u === ADMIN_USER && p === ADMIN_PASS) {
+    adminAuthed = true;
+    document.getElementById('adminLogin').style.display = 'none';
+    document.getElementById('adminPanel').style.display = 'block';
+    document.body.style.overflow = 'auto';
+    adminLoadCadastros();
+  } else {
+    document.getElementById('adminLoginErr').style.display = 'block';
+  }
+}
+
+function adminSwitchTab(tab, btn) {
+  document.querySelectorAll('.admin-tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById('adminTabCadastros').style.display = tab === 'cadastros' ? '' : 'none';
+  document.getElementById('adminTabGrupos').style.display    = tab === 'grupos'    ? '' : 'none';
+  document.getElementById('adminPanelTitle').textContent = tab === 'cadastros' ? 'Cadastros de Carona' : 'Grupos & Links';
+  if (tab === 'grupos') adminLoadGrupos();
+}
+
+async function adminLoadGrupos() {
+  const el = document.getElementById('adminGruposList');
+  el.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;font-family:Space Mono,monospace;">Carregando…</div>';
+
+  // Aguarda o módulo Firebase estar pronto (até 5s)
+  let tentativas = 0;
+  while ((!window._firestoreGetContadores || !window._firestoreGetGrupos) && tentativas < 50) {
+    await new Promise(r => setTimeout(r, 100));
+    tentativas++;
+  }
+  if (!window._firestoreGetContadores || !window._firestoreGetGrupos) {
+    el.innerHTML = '<div style="color:#FF3B3B;font-size:13px;">Firebase não carregado. Recarregue a página.</div>';
+    return;
+  }
+
+  try {
+    const [contadores, grupos] = await Promise.all([
+      window._firestoreGetContadores(),
+      window._firestoreGetGrupos()
+    ]);
+    const dias = ['seg','ter','qua','qui','sex'];
+    const nomeDia = {seg:'Segunda',ter:'Terça',qua:'Quarta',qui:'Quinta',sex:'Sexta'};
+    // Monta lista de entradas únicas ordenadas por contagem
+    const entries = Object.entries(contadores)
+      .filter(([,v]) => v > 0)
+      .sort(([,a],[,b]) => b - a);
+    if (!entries.length) { el.innerHTML = '<div style="color:rgba(255,255,255,.25);font-size:13px;font-family:Space Mono,monospace;padding:20px 0;">Nenhuma solicitação ainda.</div>'; return; }
+    el.innerHTML = entries.map(([key, count]) => {
+      const [bairro, diaipo, turno] = key.split('||');
+      const [dia, tipo] = diaipo.split('_');
+      const label = `${bairro} · ${nomeDia[dia] || dia} · ${tipo === 'chegada' ? 'Chegada' : 'Saída'} ${turno}`;
+      const linkAtual = grupos[key]?.link || '';
+      return `<div class="admin-grupo-card">
+        <span class="admin-grupo-badge">${count} solicitação${count > 1 ? 'ões' : ''}</span>
+        <span class="admin-grupo-label">${label}</span>
+        <input class="admin-grupo-input${linkAtual ? ' saved' : ''}" id="ginput-${btoa(unescape(encodeURIComponent(key))).replace(/=/g,'')}" placeholder="https://chat.whatsapp.com/..." value="${linkAtual}">
+        <button class="btn-salvar-grupo" onclick="adminSalvarGrupo('${btoa(unescape(encodeURIComponent(key))).replace(/=/g,'')}','${key}')">SALVAR</button>
+      </div>`;
+    }).join('');
+  } catch(e) {
+    el.innerHTML = '<div style="color:#FF3B3B;font-size:13px;">Erro ao carregar grupos.</div>';
+    console.error(e);
+  }
+}
+
+async function adminSalvarGrupo(inputId, key) {
+  const input = document.getElementById('ginput-' + inputId);
+  const link = input.value.trim();
+  // Decodifica a key que foi passada como atributo HTML (pode ter entidades)
+  const keyDecoded = decodeURIComponent(escape(atob(inputId.replace(/-/g, '+').replace(/_/g, '/'))));
+  await window._firestoreSaveGrupo(keyDecoded || key, link);
+  input.classList.add('saved');
+  setTimeout(() => input.classList.remove('saved'), 2000);
+}
+
+
+function adminSetFilter(status, btn) {
+  adminFilterStatus = status;
+  document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  adminLoadCadastros();
+}
+
+async function adminLoadCadastros() {
+  const list = document.getElementById('adminList');
+  const countEl = document.getElementById('adminCount');
+  list.innerHTML = '<div style="color:rgba(255,255,255,.3);font-size:13px;font-family:Space Mono,monospace;">Carregando…</div>';
+  try {
+    const docs = await window._firestoreGetCaronas(adminFilterStatus);
+    countEl.textContent = docs.length + ' cadastro(s)';
+    if (!docs.length) { list.innerHTML = '<div style="color:rgba(255,255,255,.25);font-size:13px;font-family:Space Mono,monospace;padding:20px 0;">Nenhum cadastro encontrado.</div>'; return; }
+    list.innerHTML = docs.map(d => adminCardHTML(d)).join('');
+  } catch(e) {
+    list.innerHTML = '<div style="color:#FF3B3B;font-size:13px;">Erro ao carregar cadastros.</div>';
+  }
+}
+
+function adminCardHTML(d) {
+  const t = d.turnos || {};
+  const dias = ['seg','ter','qua','qui','sex'];
+  const nomeDia = {seg:'Seg',ter:'Ter',qua:'Qua',qui:'Qui',sex:'Sex'};
+  const tags = dias.flatMap(dia => {
+    const arr = [];
+    if(t[dia+'_chegada']) arr.push(`${nomeDia[dia]} chegada ${t[dia+'_chegada']}`);
+    if(t[dia+'_saida'])   arr.push(`${nomeDia[dia]} saída ${t[dia+'_saida']}`);
+    return arr;
+  }).map(tag => `<span class="admin-turno-tag">${tag}</span>`).join('');
+
+  const actions = d.status === 'pendente'
+    ? `<button class="btn-aprovar" onclick="adminAprovar('${d.id}')">✓ APROVAR</button>
+       <button class="btn-rejeitar" onclick="adminRejeitar('${d.id}')">✕ REJEITAR</button>`
+    : d.status === 'aprovado'
+    ? `<button class="btn-rejeitar" onclick="adminRejeitar('${d.id}')">✕ REJEITAR</button>`
+    : `<button class="btn-aprovar" onclick="adminAprovar('${d.id}')">✓ REATIVAR</button>`;
+
+  return `<div class="admin-card" id="acard-${d.id}">
+    <div class="admin-card-header">
+      <div>
+        <div class="admin-card-name">${d.nome}</div>
+        <div class="admin-card-mat">Mat. ${d.matricula} · ${d.semestre || '2026.1'}</div>
+      </div>
+      <span class="status-pill ${d.status}">${d.status.toUpperCase()}</span>
+    </div>
+    <div class="admin-card-info">
+      📍 ${d.bairro}<br>
+      📧 ${d.email}<br>
+      📱 ${d.celular}<br>
+      🕐 Cadastro: ${d.criadoEm ? new Date(d.criadoEm).toLocaleString('pt-BR') : '—'}
+    </div>
+    <div class="admin-card-turnos">${tags || '<span class="admin-turno-tag">sem turnos</span>'}</div>
+    <div class="admin-card-actions">${actions}</div>
+  </div>`;
+}
+
+async function adminAprovar(id) {
+  await window._firestoreUpdateCarona(id, 'aprovado');
+  adminLoadCadastros();
+}
+async function adminRejeitar(id) {
+  await window._firestoreUpdateCarona(id, 'rejeitado');
+  adminLoadCadastros();
+}
+</script>
+
+</body>
+</html>
