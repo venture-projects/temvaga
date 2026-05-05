@@ -1751,21 +1751,21 @@ async function submitReport() {
 
   // ── Ajusta ocupação dinamicamente ANTES de salvar ──
   const h = new Date().getHours();
-  const isTarde = h >= 13; // tarde = após 13h
+  const isTarde = h >= 12; // tarde = após 12h
 
   if (currentOcupacao === null) currentOcupacao = 0;
 
   if (status === 'livre') {
     if (isTarde) {
-      // Tarde: cada reporte "tem vagas" diminui 2,5%, mínimo 0%
-      currentOcupacao = Math.max(0, currentOcupacao - 2.5);
+      // Tarde (após 12h): cada reporte "tem vagas" diminui 10%, mínimo 0%
+      currentOcupacao = Math.max(0, currentOcupacao - 10);
     } else {
-      // Manhã: cada reporte "tem vagas" aumenta 2,5%, máximo 90%
-      currentOcupacao = Math.min(90, currentOcupacao + 2.5);
+      // Manhã (antes de 12h): cada reporte "tem vagas" aumenta 5%, máximo 90%
+      currentOcupacao = Math.min(90, currentOcupacao + 5);
     }
   } else if (status === 'quase') {
-    // "Quase cheio" → sobe 2,5% em direção a 95%
-    currentOcupacao = Math.min(95, Math.max(currentOcupacao, 80) + 2.5);
+    // "Quase cheio" → fixa em 90%
+    currentOcupacao = 90;
   } else if (status === 'cheio') {
     currentOcupacao = 100;
   }
