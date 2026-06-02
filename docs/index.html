@@ -1557,7 +1557,9 @@ async function loadAndRenderViews() {
     document.getElementById('viewsDia').textContent        = d[dayKey]   || 0;
     document.getElementById('viewsSemana').textContent     = d[wkKey]    || 0;
     document.getElementById('viewsMes').textContent        = d[moKey]    || 0;
-    document.getElementById('viewsUltimoMes').textContent  = d[lastMoKey] || 0;
+    // Correção manual maio/2025: visitas aconteceram antes do contador ser implementado
+    const ultimoMesVal = lastMoKey === '2025-05_last' ? 210 + (d[lastMoKey] || 0) : (d[lastMoKey] || 0);
+    document.getElementById('viewsUltimoMes').textContent  = ultimoMesVal;
   } catch(e) { console.warn('views load err', e); }
 }
 
