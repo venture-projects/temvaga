@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>PUC Parking — Estacionamento Rotativo v16</title>
+<title>PUC Parking — Estacionamento Rotativo v18</title>
 <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
 <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6134568859171847"
      crossorigin="anonymous"></script>
@@ -515,12 +515,49 @@
     margin-bottom: 40px;
   }
 
+  .chart-inner {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+
+  .chart-y-axis {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 100px;
+    padding-bottom: 2px;
+  }
+  .chart-y-label {
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: rgba(245,245,240,0.2);
+    text-align: right;
+    line-height: 1;
+  }
+
+  .chart-grid-area {
+    flex: 1;
+    position: relative;
+  }
+  .chart-grid-lines {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+  }
+  .chart-grid-line {
+    position: absolute;
+    left: 0; right: 0;
+    border-top: 1px dashed rgba(255,255,255,0.06);
+  }
+
   .chart-bars {
     display: flex;
     align-items: flex-end;
     gap: 6px;
     height: 100px;
     margin-bottom: 8px;
+    position: relative;
   }
   .bar-wrap {
     flex: 1;
@@ -529,6 +566,7 @@
     align-items: center;
     gap: 4px;
     height: 100%;
+    position: relative;
   }
   .bar {
     width: 100%;
@@ -539,6 +577,21 @@
     position: relative;
   }
   .bar.highlight { background: var(--ouro); }
+  .bar.nodata { background: rgba(255,255,255,0.08); min-height: 4px; }
+  .bar-value {
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    font-family: 'Space Mono', monospace;
+    font-size: 8px;
+    color: rgba(245,245,240,0.5);
+    white-space: nowrap;
+    margin-bottom: 2px;
+    opacity: 0;
+    transition: opacity 0.5s ease 0.6s;
+  }
+  .bar-value.visible { opacity: 1; }
   .bar-label {
     font-family: 'Space Mono', monospace;
     font-size: 9px;
@@ -1076,6 +1129,10 @@
       <div class="summary-num" id="viewsMes">—</div>
       <div class="summary-label">Este Mês</div>
     </div>
+    <div class="summary-card">
+      <div class="summary-num" id="viewsUltimoMes">—</div>
+      <div class="summary-label">Mês Anterior</div>
+    </div>
   </div>
 
   <div class="section-title">Ocupação ao Longo do Dia</div>
@@ -1084,10 +1141,27 @@
     <div class="analytics-tabs">
       <button class="tab active" onclick="switchTab(this,'hora')">HORA A HORA</button>
       <button class="tab" onclick="switchTab(this,'dia')">POR DIA</button>
-      <button class="tab" onclick="switchTab(this,'semana')">SEMANAS</button>
     </div>
-    <div class="chart-bars" id="chartBars"></div>
-    <div id="chartLabels" style="display:flex;gap:6px;"></div>
+    <div class="chart-inner">
+      <div class="chart-y-axis">
+        <div class="chart-y-label">0%</div>
+        <div class="chart-y-label">25%</div>
+        <div class="chart-y-label">50%</div>
+        <div class="chart-y-label">75%</div>
+        <div class="chart-y-label">100%</div>
+      </div>
+      <div class="chart-grid-area">
+        <div class="chart-grid-lines">
+          <div class="chart-grid-line" style="bottom:0%"></div>
+          <div class="chart-grid-line" style="bottom:25%"></div>
+          <div class="chart-grid-line" style="bottom:50%"></div>
+          <div class="chart-grid-line" style="bottom:75%"></div>
+          <div class="chart-grid-line" style="bottom:100%"></div>
+        </div>
+        <div class="chart-bars" id="chartBars"></div>
+      </div>
+    </div>
+    <div id="chartLabels" style="display:flex;gap:6px;padding-left:28px;margin-top:4px;"></div>
   </div>
 
   <!-- AD SLOT MIDDLE -->
@@ -1406,7 +1480,10 @@ async function trackPageView() {
   const hrKey  = dayKey + 'H' + now.getHours();          // "2025-04-15H10"
   const wkKey  = dayKey.slice(0,7) + 'W' +
                  Math.min(3, Math.floor((now.getDate()-1)/7)); // "2025-04W1"
-  const moKey  = dayKey.slice(0,7);                       // "2025-04"
+  const moKey  = dayKey.slice(0,7);                       // "2025-06"
+  // Último mês: mês anterior no formato "2025-05_last"
+  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMoKey = prevMonth.toISOString().slice(0,7) + '_last';
 
   // Throttle: só conta 1x por hora por dispositivo (sessionStorage é local mas só dura a sessão)
   const ssKey = 'pucpk_view_' + hrKey;
@@ -1415,10 +1492,11 @@ async function trackPageView() {
 
   const ref = doc(db, 'views', 'counters');
   await setDoc(ref, {
-    [hrKey]: increment(1),
-    [dayKey]: increment(1),
-    [wkKey]:  increment(1),
-    [moKey]:  increment(1),
+    [hrKey]:    increment(1),
+    [dayKey]:   increment(1),
+    [wkKey]:    increment(1),
+    [moKey]:    increment(1),
+    [lastMoKey]: increment(1),
   }, { merge: true });
 
   loadAndRenderViews();
@@ -1469,14 +1547,17 @@ async function loadAndRenderViews() {
   const wkKey  = dayKey.slice(0,7) + 'W' +
                  Math.min(3, Math.floor((now.getDate()-1)/7));
   const moKey  = dayKey.slice(0,7);
+  const prevMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+  const lastMoKey = prevMonth.toISOString().slice(0,7) + '_last';
 
   try {
     const snap = await getDoc(doc(db, 'views', 'counters'));
     const d    = snap.exists() ? snap.data() : {};
-    document.getElementById('viewsHora').textContent   = d[hrKey]  || 0;
-    document.getElementById('viewsDia').textContent    = d[dayKey] || 0;
-    document.getElementById('viewsSemana').textContent = d[wkKey]  || 0;
-    document.getElementById('viewsMes').textContent    = d[moKey]  || 0;
+    document.getElementById('viewsHora').textContent       = d[hrKey]    || 0;
+    document.getElementById('viewsDia').textContent        = d[dayKey]   || 0;
+    document.getElementById('viewsSemana').textContent     = d[wkKey]    || 0;
+    document.getElementById('viewsMes').textContent        = d[moKey]    || 0;
+    document.getElementById('viewsUltimoMes').textContent  = d[lastMoKey] || 0;
   } catch(e) { console.warn('views load err', e); }
 }
 
@@ -1672,48 +1753,66 @@ async function renderChart(mode) {
   let data, labs;
 
   if (mode === 'hora') {
-    const h = new Date().getHours();
-    labs = Array.from({length:12}, (_,i) => ((h - 11 + i + 24) % 24) + 'h');
+    // Horas fixas: 6h às 17h (horário de funcionamento)
+    labs = Array.from({length:12}, (_,i) => (i + 6) + 'h'); // 6h, 7h, ... 17h
 
-    // Tenta pegar dados reais do Firestore das últimas 12h
+    // Busca todo o histórico, agrupa por hora do dia (6h–17h)
     try {
-      const cutoff12 = Timestamp.fromMillis(Date.now() - 12 * 60 * 60 * 1000);
       const snap = await getDocs(query(
         collection(db, 'reports'),
-        where('ts', '>=', cutoff12),
         orderBy('ts', 'asc')
       ));
       const byHr = {};
       snap.docs.forEach(d => {
         const hh = new Date(d.data().ts.toMillis()).getHours();
-        if (!byHr[hh]) byHr[hh] = { cheio:0, quase:0, livre:0, total:0 };
-        byHr[hh][d.data().status]++;
+        if (hh < 6 || hh > 17) return;
+        if (!byHr[hh]) byHr[hh] = { cheio: 0, total: 0 };
         byHr[hh].total++;
+        if (d.data().status === 'cheio') byHr[hh].cheio++;
       });
-      data = labs.map(l => {
-        const hh = parseInt(l);
+      data = Array.from({length:12}, (_,i) => {
+        const hh = i + 6;
         const b  = byHr[hh];
-        if (!b || !b.total) return 0; // sem reporte nessa hora = 0
-        return Math.round((b.cheio * 100 + b.quase * 80 + b.livre * 30) / b.total);
+        if (!b || !b.total) return null; // sem dados = barra cinza
+        return Math.round((b.cheio / b.total) * 100);
       });
-    } catch { data = labs.map(() => 0); }
+    } catch { data = Array.from({length:12}, () => null); }
 
   } else if (mode === 'dia') {
-    labs = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom'];
-    data = labs.map(() => Math.floor(20+Math.random()*80));
-  } else {
-    labs = ['Sem 1','Sem 2','Sem 3','Sem 4'];
-    data = labs.map(() => Math.floor(30+Math.random()*70));
+    labs = ['Seg','Ter','Qua','Qui','Sex'];
+    // Busca todo o histórico de reportes (seg–sex apenas)
+    try {
+      const snap = await getDocs(query(
+        collection(db, 'reports'),
+        orderBy('ts', 'asc')
+      ));
+      // Agrupa por dia da semana (1=Seg...5=Sex)
+      const byDow = {};
+      snap.docs.forEach(d => {
+        const dow = new Date(d.data().ts.toMillis()).getDay(); // 0=Dom...6=Sáb
+        if (dow < 1 || dow > 5) return;
+        if (!byDow[dow]) byDow[dow] = { cheio: 0, total: 0 };
+        byDow[dow].total++;
+        if (d.data().status === 'cheio') byDow[dow].cheio++;
+      });
+      // [1=Seg, 2=Ter, 3=Qua, 4=Qui, 5=Sex]
+      data = [1,2,3,4,5].map(dow => {
+        const b = byDow[dow];
+        if (!b || !b.total) return null; // sem dados
+        return Math.round((b.cheio / b.total) * 100);
+      });
+    } catch { data = [null,null,null,null,null]; }
   }
 
-  const max  = Math.max(...data, 1);
+  const max  = Math.max(...data.filter(v => v !== null && v !== undefined), 1);
   const curH = new Date().getHours();
 
   data.forEach((val, i) => {
+    const hasData = val !== null && val !== undefined;
     const wrap = document.createElement('div');
     wrap.className = 'bar-wrap';
     const bar = document.createElement('div');
-    bar.className = 'bar';
+    bar.className = 'bar' + (!hasData ? ' nodata' : '');
     if (mode === 'hora' && parseInt(labs[i]) === curH) bar.classList.add('highlight');
     bar.style.height = '0px';
     wrap.appendChild(bar);
@@ -1724,7 +1823,11 @@ async function renderChart(mode) {
     lbl.textContent = labs[i];
     labelsEl.appendChild(lbl);
 
-    setTimeout(() => { bar.style.height = (val / max * 90) + 'px'; }, 50 + i*30);
+    if (hasData) {
+      setTimeout(() => { bar.style.height = (val / max * 90) + 'px'; }, 50 + i*30);
+    } else {
+      setTimeout(() => { bar.style.height = '4px'; }, 50 + i*30);
+    }
   });
 }
 
